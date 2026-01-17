@@ -35,8 +35,7 @@
                 type="checkbox"
                 :checked="selectedTables.includes(table.tableName)"
                 :disabled="table.primaryKeys.length === 0"
-                @click.stop
-                @change="handleTableClick($event, table, index)"
+                @click.stop.prevent="handleTableClick($event, table, index)"
               />
             </div>
             <div class="table-content">
