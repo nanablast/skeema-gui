@@ -29,6 +29,7 @@
             class="table-item"
             :class="{ selected: selectedTables.includes(table.tableName), 'no-pk': table.primaryKeys.length === 0 }"
             @click="handleTableClick($event, table, index)"
+            @mousedown.prevent
           >
             <div class="table-checkbox">
               <input
@@ -535,6 +536,9 @@ async function executeSync() {
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 
