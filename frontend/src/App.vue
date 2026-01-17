@@ -78,17 +78,31 @@
           </button>
         </div>
 
-        <!-- Progress Log -->
-        <div class="progress-log" v-if="comparing || schemaLogs.length > 0">
-          <div class="log-entries">
-            <div v-for="(log, i) in schemaLogs" :key="i" class="log-entry" :class="log.type">
-              <span class="log-icon">{{ log.type === 'done' ? '✓' : log.type === 'error' ? '✗' : '⋯' }}</span>
-              <span class="log-text">{{ log.message }}</span>
-              <span class="log-time" v-if="log.time">{{ log.time }}</span>
-            </div>
+        <!-- Progress Log - Terminal Style -->
+        <div class="terminal" v-if="comparing || schemaLogs.length > 0">
+          <div class="terminal-header">
+            <span class="terminal-dot red"></span>
+            <span class="terminal-dot yellow"></span>
+            <span class="terminal-dot green"></span>
+            <span class="terminal-title">Schema Compare</span>
           </div>
-          <div class="progress-bar" v-if="comparing">
-            <div class="progress-fill" :style="{ width: schemaProgress + '%' }"></div>
+          <div class="terminal-body" ref="terminalBody">
+            <div v-for="(log, i) in schemaLogs" :key="i" class="terminal-line">
+              <span class="terminal-prompt">$</span>
+              <span class="terminal-text" :class="log.type">{{ log.message }}</span>
+              <span class="terminal-status" v-if="log.type === 'done'">✓</span>
+              <span class="terminal-status error" v-else-if="log.type === 'error'">✗</span>
+            </div>
+            <div v-if="comparing" class="terminal-line">
+              <span class="terminal-prompt">$</span>
+              <span class="terminal-text">{{ currentStep }}</span>
+              <span class="terminal-dots">
+                <span class="dot" :class="{ active: dotIndex === 0 }">.</span>
+                <span class="dot" :class="{ active: dotIndex === 1 }">.</span>
+                <span class="dot" :class="{ active: dotIndex === 2 }">.</span>
+              </span>
+            </div>
+            <div v-if="comparing" class="terminal-cursor"></div>
           </div>
         </div>
 
@@ -138,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick, onUnmounted } from 'vue'
 import ConnectionForm from './components/ConnectionForm.vue'
 import DiffResults from './components/DiffResults.vue'
 import DataSync from './components/DataSync.vue'
@@ -193,16 +207,43 @@ interface LogEntry {
 }
 const schemaLogs = ref<LogEntry[]>([])
 const schemaProgress = ref(0)
+const currentStep = ref('')
+const dotIndex = ref(0)
+const terminalBody = ref<HTMLElement | null>(null)
+let dotInterval: number | null = null
+
+function startDotAnimation() {
+  dotInterval = window.setInterval(() => {
+    dotIndex.value = (dotIndex.value + 1) % 3
+  }, 400)
+}
+
+function stopDotAnimation() {
+  if (dotInterval) {
+    clearInterval(dotInterval)
+    dotInterval = null
+  }
+}
+
+onUnmounted(() => {
+  stopDotAnimation()
+})
 
 function addSchemaLog(message: string, type: 'progress' | 'done' | 'error' = 'progress') {
   const now = new Date()
   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
   schemaLogs.value.push({ message, type, time })
+  nextTick(() => {
+    if (terminalBody.value) {
+      terminalBody.value.scrollTop = terminalBody.value.scrollHeight
+    }
+  })
 }
 
 function clearSchemaLogs() {
   schemaLogs.value = []
   schemaProgress.value = 0
+  currentStep.value = ''
 }
 
 const canCompare = computed(() => {
@@ -261,40 +302,50 @@ async function compareSchemas() {
   hasCompared.value = false
   diffResults.value = []
   clearSchemaLogs()
+  startDotAnimation()
 
   try {
-    addSchemaLog(`Starting schema comparison...`)
-    schemaProgress.value = 10
+    currentStep.value = 'Initializing comparison'
+    await delay(300)
+    addSchemaLog('Initializing comparison', 'done')
 
-    addSchemaLog(`Connecting to source database: ${sourceConfig.value.database}`)
-    schemaProgress.value = 20
+    currentStep.value = `Connecting to source: ${sourceConfig.value.database}`
+    await delay(200)
+    addSchemaLog(`Connected to source: ${sourceConfig.value.database}`, 'done')
 
-    addSchemaLog(`Fetching source schema...`)
-    schemaProgress.value = 40
+    currentStep.value = 'Fetching source schema'
+    await delay(200)
+    addSchemaLog('Fetched source schema', 'done')
 
-    addSchemaLog(`Connecting to target database: ${targetConfig.value.database}`)
-    schemaProgress.value = 50
+    currentStep.value = `Connecting to target: ${targetConfig.value.database}`
+    await delay(200)
+    addSchemaLog(`Connected to target: ${targetConfig.value.database}`, 'done')
 
-    addSchemaLog(`Fetching target schema...`)
-    schemaProgress.value = 70
+    currentStep.value = 'Fetching target schema'
+    await delay(200)
+    addSchemaLog('Fetched target schema', 'done')
 
-    addSchemaLog(`Comparing table structures...`)
-    schemaProgress.value = 85
-
+    currentStep.value = 'Comparing table structures'
     const results = await CompareSchemas(sourceConfig.value, targetConfig.value)
     diffResults.value = results || []
     hasCompared.value = true
 
-    schemaProgress.value = 100
+    addSchemaLog('Compared table structures', 'done')
+
     const diffCount = results?.length || 0
-    addSchemaLog(`Comparison complete: ${diffCount} differences found`, 'done')
+    addSchemaLog(`Comparison complete: ${diffCount} difference(s) found`, 'done')
 
   } catch (e: any) {
     addSchemaLog(`Error: ${e}`, 'error')
-    alert('Comparison failed: ' + e)
   } finally {
+    stopDotAnimation()
     comparing.value = false
+    currentStep.value = ''
   }
+}
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 async function executeSQL(sql: string) {
@@ -424,78 +475,108 @@ body {
   font-weight: bold;
 }
 
-/* Progress Log */
-.progress-log {
-  background: #16213e;
-  border-radius: 10px;
-  padding: 15px 20px;
+/* Terminal Style */
+.terminal {
+  background: #0d0d0d;
+  border-radius: 8px;
   margin: 0 auto 20px;
   max-width: 700px;
-  border: 1px solid #333;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
 }
 
-.log-entries {
-  max-height: 150px;
-  overflow-y: auto;
-  margin-bottom: 10px;
-}
-
-.log-entry {
+.terminal-header {
+  background: #2d2d2d;
+  padding: 8px 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 0;
+  gap: 6px;
+}
+
+.terminal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.terminal-dot.red { background: #ff5f56; }
+.terminal-dot.yellow { background: #ffbd2e; }
+.terminal-dot.green { background: #27ca40; }
+
+.terminal-title {
+  margin-left: 10px;
+  color: #888;
+  font-size: 12px;
+}
+
+.terminal-body {
+  padding: 15px;
+  max-height: 200px;
+  overflow-y: auto;
   font-size: 13px;
-  color: #ccc;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  line-height: 1.6;
 }
 
-.log-entry:last-child {
-  border-bottom: none;
+.terminal-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
-.log-entry.progress .log-icon {
+.terminal-prompt {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.terminal-text {
+  color: #eee;
+}
+
+.terminal-text.done {
+  color: #81c784;
+}
+
+.terminal-text.error {
+  color: #f44336;
+}
+
+.terminal-status {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.terminal-status.error {
+  color: #f44336;
+}
+
+.terminal-dots {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.terminal-dots .dot {
+  color: #555;
+  transition: color 0.2s;
+}
+
+.terminal-dots .dot.active {
   color: #4fc3f7;
 }
 
-.log-entry.done .log-icon {
-  color: #4caf50;
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: #4fc3f7;
+  margin-left: 4px;
+  animation: blink 1s infinite;
 }
 
-.log-entry.error .log-icon {
-  color: #f44336;
-}
-
-.log-entry.error .log-text {
-  color: #f44336;
-}
-
-.log-icon {
-  width: 16px;
-  text-align: center;
-}
-
-.log-text {
-  flex: 1;
-}
-
-.log-time {
-  color: #666;
-  font-size: 11px;
-  font-family: 'Monaco', 'Menlo', monospace;
-}
-
-.progress-bar {
-  height: 4px;
-  background: #1a1a2e;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4fc3f7, #81c784);
-  border-radius: 2px;
-  transition: width 0.3s ease;
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
 </style>

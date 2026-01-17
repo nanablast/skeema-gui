@@ -44,17 +44,31 @@
         </button>
       </div>
 
-      <!-- Progress Log -->
-      <div class="progress-log" v-if="comparing || logs.length > 0">
-        <div class="log-entries">
-          <div v-for="(log, i) in logs" :key="i" class="log-entry" :class="log.type">
-            <span class="log-icon">{{ log.type === 'done' ? '✓' : log.type === 'error' ? '✗' : '⋯' }}</span>
-            <span class="log-text">{{ log.message }}</span>
-            <span class="log-time" v-if="log.time">{{ log.time }}</span>
-          </div>
+      <!-- Progress Log - Terminal Style -->
+      <div class="terminal" v-if="comparing || logs.length > 0">
+        <div class="terminal-header">
+          <span class="terminal-dot red"></span>
+          <span class="terminal-dot yellow"></span>
+          <span class="terminal-dot green"></span>
+          <span class="terminal-title">Data Compare - {{ selectedTable }}</span>
         </div>
-        <div class="progress-bar" v-if="comparing">
-          <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+        <div class="terminal-body" ref="terminalBody">
+          <div v-for="(log, i) in logs" :key="i" class="terminal-line">
+            <span class="terminal-prompt">$</span>
+            <span class="terminal-text" :class="log.type">{{ log.message }}</span>
+            <span class="terminal-status" v-if="log.type === 'done'">✓</span>
+            <span class="terminal-status error" v-else-if="log.type === 'error'">✗</span>
+          </div>
+          <div v-if="comparing" class="terminal-line">
+            <span class="terminal-prompt">$</span>
+            <span class="terminal-text">{{ currentStep }}</span>
+            <span class="terminal-dots">
+              <span class="dot" :class="{ active: dotIndex === 0 }">.</span>
+              <span class="dot" :class="{ active: dotIndex === 1 }">.</span>
+              <span class="dot" :class="{ active: dotIndex === 2 }">.</span>
+            </span>
+          </div>
+          <div v-if="comparing" class="terminal-cursor"></div>
         </div>
       </div>
 
@@ -144,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick, onUnmounted } from 'vue'
 import { GetTablesForSync, CompareTableData, GetDataSyncSummary, ExecuteSQL } from '../../wailsjs/go/main/App'
 import { database } from '../../wailsjs/go/models'
 
@@ -182,16 +196,47 @@ interface LogEntry {
 }
 const logs = ref<LogEntry[]>([])
 const progressPercent = ref(0)
+const currentStep = ref('')
+const dotIndex = ref(0)
+const terminalBody = ref<HTMLElement | null>(null)
+let dotInterval: number | null = null
+
+function startDotAnimation() {
+  dotInterval = window.setInterval(() => {
+    dotIndex.value = (dotIndex.value + 1) % 3
+  }, 400)
+}
+
+function stopDotAnimation() {
+  if (dotInterval) {
+    clearInterval(dotInterval)
+    dotInterval = null
+  }
+}
+
+onUnmounted(() => {
+  stopDotAnimation()
+})
 
 function addLog(message: string, type: 'progress' | 'done' | 'error' = 'progress') {
   const now = new Date()
   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
   logs.value.push({ message, type, time })
+  nextTick(() => {
+    if (terminalBody.value) {
+      terminalBody.value.scrollTop = terminalBody.value.scrollHeight
+    }
+  })
 }
 
 function clearLogs() {
   logs.value = []
   progressPercent.value = 0
+  currentStep.value = ''
+}
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 // Sync options
@@ -249,26 +294,32 @@ async function compareData() {
   hasCompared.value = false
   dataDiffs.value = []
   clearLogs()
+  startDotAnimation()
 
   try {
-    addLog(`Starting comparison for table: ${selectedTable.value}`)
-    progressPercent.value = 10
+    currentStep.value = 'Initializing comparison'
+    await delay(300)
+    addLog('Initializing comparison', 'done')
 
-    addLog('Connecting to source database...')
-    progressPercent.value = 20
+    currentStep.value = 'Connecting to source database'
+    await delay(200)
+    addLog('Connected to source database', 'done')
 
-    addLog('Fetching source data...')
-    progressPercent.value = 40
+    currentStep.value = 'Fetching source data'
+    await delay(200)
+    addLog('Fetched source data', 'done')
 
+    currentStep.value = 'Connecting to target database'
+    await delay(200)
+    addLog('Connected to target database', 'done')
+
+    currentStep.value = 'Fetching target data'
+    await delay(200)
+    addLog('Fetched target data', 'done')
+
+    currentStep.value = 'Comparing records by primary key'
     const diffsPromise = CompareTableData(props.sourceConfig, props.targetConfig, selectedTable.value)
-
-    addLog('Fetching target data...')
-    progressPercent.value = 60
-
     const summaryPromise = GetDataSyncSummary(props.sourceConfig, props.targetConfig, selectedTable.value)
-
-    addLog('Comparing records...')
-    progressPercent.value = 80
 
     const [diffs, summaryData] = await Promise.all([diffsPromise, summaryPromise])
 
@@ -276,14 +327,17 @@ async function compareData() {
     summary.value = summaryData
     hasCompared.value = true
 
-    progressPercent.value = 100
+    addLog('Compared records by primary key', 'done')
+
     const diffCount = diffs?.length || 0
-    addLog(`Comparison complete: ${diffCount} differences found`, 'done')
+    addLog(`Comparison complete: ${diffCount} difference(s) found`, 'done')
 
   } catch (e: any) {
     addLog(`Error: ${e}`, 'error')
   } finally {
+    stopDotAnimation()
     comparing.value = false
+    currentStep.value = ''
   }
 }
 
@@ -671,77 +725,107 @@ async function executeSync() {
   background: #45a045;
 }
 
-/* Progress Log */
-.progress-log {
-  background: #0f0f23;
+/* Terminal Style */
+.terminal {
+  background: #0d0d0d;
   border-radius: 8px;
-  padding: 15px;
   margin-bottom: 20px;
-  border: 1px solid #333;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
 }
 
-.log-entries {
-  max-height: 150px;
-  overflow-y: auto;
-  margin-bottom: 10px;
-}
-
-.log-entry {
+.terminal-header {
+  background: #2d2d2d;
+  padding: 8px 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 0;
+  gap: 6px;
+}
+
+.terminal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.terminal-dot.red { background: #ff5f56; }
+.terminal-dot.yellow { background: #ffbd2e; }
+.terminal-dot.green { background: #27ca40; }
+
+.terminal-title {
+  margin-left: 10px;
+  color: #888;
+  font-size: 12px;
+}
+
+.terminal-body {
+  padding: 15px;
+  max-height: 200px;
+  overflow-y: auto;
   font-size: 13px;
-  color: #ccc;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  line-height: 1.6;
 }
 
-.log-entry:last-child {
-  border-bottom: none;
+.terminal-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
-.log-entry.progress .log-icon {
+.terminal-prompt {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.terminal-text {
+  color: #eee;
+}
+
+.terminal-text.done {
+  color: #81c784;
+}
+
+.terminal-text.error {
+  color: #f44336;
+}
+
+.terminal-status {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.terminal-status.error {
+  color: #f44336;
+}
+
+.terminal-dots {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.terminal-dots .dot {
+  color: #555;
+  transition: color 0.2s;
+}
+
+.terminal-dots .dot.active {
   color: #4fc3f7;
 }
 
-.log-entry.done .log-icon {
-  color: #4caf50;
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: #4fc3f7;
+  margin-left: 4px;
+  animation: blink 1s infinite;
 }
 
-.log-entry.error .log-icon {
-  color: #f44336;
-}
-
-.log-entry.error .log-text {
-  color: #f44336;
-}
-
-.log-icon {
-  width: 16px;
-  text-align: center;
-}
-
-.log-text {
-  flex: 1;
-}
-
-.log-time {
-  color: #666;
-  font-size: 11px;
-  font-family: 'Monaco', 'Menlo', monospace;
-}
-
-.progress-bar {
-  height: 4px;
-  background: #1a1a2e;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4fc3f7, #81c784);
-  border-radius: 2px;
-  transition: width 0.3s ease;
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
 </style>
