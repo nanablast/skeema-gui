@@ -1,0 +1,25 @@
+# Build output
+build/bin
+
+# Dependencies
+node_modules
+frontend/node_modules
+
+# Frontend dist
+frontend/dist
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Wails dev files
+frontend/wailsjs/
+
+# Local config (contains passwords)
+.skeema-gui/
