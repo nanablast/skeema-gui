@@ -13,7 +13,6 @@ A cross-platform MySQL schema and data synchronization tool with a modern GUI.
 
 - **Schema Comparison** - Compare table structures between source and target databases
 - **Data Synchronization** - Sync data with selective INSERT/UPDATE/DELETE operations
-- **Table Designer** - Visually design and create new tables
 - **Table Browser** - Browse table structures and data with pagination
 - **Database Management** - Create new databases with charset/collation options
 - **Connection Manager** - Save and manage multiple database connections
@@ -80,14 +79,7 @@ Use the 💾 button to store frequently used connections.
 4. Choose which operations to sync (INSERT/UPDATE/DELETE)
 5. Execute the synchronization
 
-### 4. Table Designer
-
-1. Select the **Table Designer** tab
-2. Define table name, columns, and indexes
-3. Preview the generated CREATE TABLE SQL
-4. Create the table on the target database
-
-### 5. Table Browser
+### 3. Table Browser
 
 1. Select the **Table Browser** tab
 2. Switch between Source and Target databases

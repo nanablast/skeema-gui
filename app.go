@@ -83,31 +83,6 @@ func (a *App) GetDataSyncSummary(source, target database.ConnectionConfig, table
 	return database.GetDataSyncSummary(source, target, tableName)
 }
 
-// GetCommonDataTypes returns common MySQL data types
-func (a *App) GetCommonDataTypes() []string {
-	return database.GetCommonDataTypes()
-}
-
-// GetTableEngines returns available storage engines
-func (a *App) GetTableEngines() []string {
-	return database.GetTableEngines()
-}
-
-// GetCharsets returns common charsets
-func (a *App) GetCharsets() []string {
-	return database.GetCharsets()
-}
-
-// GenerateCreateTableSQL generates CREATE TABLE SQL from definition
-func (a *App) GenerateCreateTableSQL(def database.TableDefinition) string {
-	return database.GenerateCreateTableSQL(def)
-}
-
-// CreateTable creates a table in the database
-func (a *App) CreateTable(config database.ConnectionConfig, def database.TableDefinition) error {
-	return database.CreateTable(config, def)
-}
-
 // CreateDatabase creates a new database
 func (a *App) CreateDatabase(config database.ConnectionConfig, dbName, charset, collation string) error {
 	return database.CreateDatabase(config, dbName, charset, collation)

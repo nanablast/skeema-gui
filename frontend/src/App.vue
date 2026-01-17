@@ -51,13 +51,6 @@
         </button>
         <button
           class="tab"
-          :class="{ active: activeTab === 'designer' }"
-          @click="activeTab = 'designer'"
-        >
-          🛠️ Table Designer
-        </button>
-        <button
-          class="tab"
           :class="{ active: activeTab === 'browser' }"
           @click="activeTab = 'browser'"
         >
@@ -130,14 +123,6 @@
         />
       </div>
 
-      <!-- Table Designer Tab -->
-      <div v-show="activeTab === 'designer'">
-        <TableDesigner
-          :target-config="targetConfig"
-          :target-connected="targetConnected"
-        />
-      </div>
-
       <!-- Table Browser Tab -->
       <div v-show="activeTab === 'browser'">
         <TableBrowser
@@ -156,7 +141,6 @@ import { ref, computed, nextTick, onUnmounted } from 'vue'
 import ConnectionForm from './components/ConnectionForm.vue'
 import DiffResults from './components/DiffResults.vue'
 import DataSync from './components/DataSync.vue'
-import TableDesigner from './components/TableDesigner.vue'
 import TableBrowser from './components/TableBrowser.vue'
 import { TestConnection, GetDatabases, CompareSchemas, ExecuteSQL } from '../wailsjs/go/main/App'
 import { database } from '../wailsjs/go/models'
@@ -165,7 +149,7 @@ type ConnectionConfig = database.ConnectionConfig
 type DiffResult = database.DiffResult
 
 // Active tab
-const activeTab = ref<'schema' | 'data' | 'designer' | 'browser'>('schema')
+const activeTab = ref<'schema' | 'data' | 'browser'>('schema')
 
 // Browser target switch
 const browserTarget = ref<'source' | 'target'>('target')
