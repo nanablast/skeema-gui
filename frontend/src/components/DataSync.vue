@@ -24,11 +24,11 @@
 
         <div class="table-list" v-if="tables.length > 0">
           <div
-            v-for="table in tables"
+            v-for="(table, index) in tables"
             :key="table.tableName"
             class="table-item"
             :class="{ selected: selectedTables.includes(table.tableName), 'no-pk': table.primaryKeys.length === 0 }"
-            @click="toggleTableSelection(table)"
+            @click="handleTableClick($event, table, index)"
           >
             <div class="table-checkbox">
               <input
@@ -36,7 +36,7 @@
                 :checked="selectedTables.includes(table.tableName)"
                 :disabled="table.primaryKeys.length === 0"
                 @click.stop
-                @change="toggleTableSelection(table)"
+                @change="handleTableClick($event, table, index)"
               />
             </div>
             <div class="table-content">
@@ -210,6 +210,7 @@ const emit = defineEmits<{
 const tables = ref<TableDataInfo[]>([])
 const loadingTables = ref(false)
 const selectedTables = ref<string[]>([])
+const lastClickedIndex = ref<number | null>(null)
 const comparing = ref(false)
 const hasCompared = ref(false)
 const dataDiffs = ref<DataDiffResult[]>([])
@@ -307,6 +308,7 @@ async function loadTables() {
   try {
     tables.value = await GetTablesForSync(props.sourceConfig) || []
     selectedTables.value = []
+    lastClickedIndex.value = null
   } catch (e: any) {
     alert('Failed to load tables: ' + e)
   } finally {
@@ -323,6 +325,32 @@ function toggleTableSelection(table: TableDataInfo) {
     selectedTables.value.push(table.tableName)
   } else {
     selectedTables.value.splice(index, 1)
+  }
+}
+
+function handleTableClick(event: MouseEvent | Event, table: TableDataInfo, index: number) {
+  if (table.primaryKeys.length === 0) {
+    return
+  }
+
+  // Check if shift key is pressed (for range selection)
+  const isShiftKey = event instanceof MouseEvent && event.shiftKey
+
+  if (isShiftKey && lastClickedIndex.value !== null) {
+    // Shift+click: select range
+    const start = Math.min(lastClickedIndex.value, index)
+    const end = Math.max(lastClickedIndex.value, index)
+
+    for (let i = start; i <= end; i++) {
+      const t = tables.value[i]
+      if (t.primaryKeys.length > 0 && !selectedTables.value.includes(t.tableName)) {
+        selectedTables.value.push(t.tableName)
+      }
+    }
+  } else {
+    // Normal click: toggle single selection
+    toggleTableSelection(table)
+    lastClickedIndex.value = index
   }
 }
 
