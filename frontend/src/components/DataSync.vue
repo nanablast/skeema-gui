@@ -31,13 +31,10 @@
             @click="handleTableClick($event, table, index)"
             @mousedown.prevent
           >
-            <div class="table-checkbox">
-              <input
-                type="checkbox"
-                :checked="selectedTables.includes(table.tableName)"
-                :disabled="table.primaryKeys.length === 0"
-                @click.stop.prevent="handleTableClick($event, table, index)"
-              />
+            <div class="table-checkbox" @click.stop="handleTableClick($event, table, index)">
+              <span class="custom-checkbox" :class="{ checked: selectedTables.includes(table.tableName), disabled: table.primaryKeys.length === 0 }">
+                <span class="checkmark" v-if="selectedTables.includes(table.tableName)">✓</span>
+              </span>
             </div>
             <div class="table-content">
               <span class="table-name">{{ table.tableName }}</span>
@@ -596,16 +593,38 @@ async function executeSync() {
   padding-top: 2px;
 }
 
-.table-checkbox input {
-  width: 16px;
-  height: 16px;
+.custom-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #555;
+  border-radius: 4px;
+  background: #0f0f23;
   cursor: pointer;
-  accent-color: #4fc3f7;
+  transition: all 0.2s;
 }
 
-.table-checkbox input:disabled {
-  cursor: not-allowed;
+.custom-checkbox:hover:not(.disabled) {
+  border-color: #4fc3f7;
+}
+
+.custom-checkbox.checked {
+  background: #4fc3f7;
+  border-color: #4fc3f7;
+}
+
+.custom-checkbox.disabled {
   opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.checkmark {
+  color: #1a1a2e;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1;
 }
 
 .table-content {
