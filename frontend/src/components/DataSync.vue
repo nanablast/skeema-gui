@@ -8,10 +8,16 @@
     <!-- Table Selection -->
     <div class="table-section">
       <div class="section-header">
-        <h4>Select Table</h4>
-        <button class="btn btn-refresh" @click="loadTables" :disabled="loadingTables">
-          {{ loadingTables ? 'Loading...' : '🔄 Refresh' }}
-        </button>
+        <h4>Select Tables</h4>
+        <div class="header-actions">
+          <label class="checkbox-label select-all" v-if="selectableTables.length > 0">
+            <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
+            <span>Select All ({{ selectableTables.length }})</span>
+          </label>
+          <button class="btn btn-refresh" @click="loadTables" :disabled="loadingTables">
+            {{ loadingTables ? 'Loading...' : '🔄 Refresh' }}
+          </button>
+        </div>
       </div>
 
       <div class="table-list" v-if="tables.length > 0">
@@ -19,29 +25,44 @@
           v-for="table in tables"
           :key="table.tableName"
           class="table-item"
-          :class="{ selected: selectedTable === table.tableName, 'no-pk': table.primaryKeys.length === 0 }"
-          @click="selectTable(table)"
+          :class="{ selected: selectedTables.includes(table.tableName), 'no-pk': table.primaryKeys.length === 0 }"
+          @click="toggleTableSelection(table)"
         >
-          <span class="table-name">{{ table.tableName }}</span>
-          <span class="table-info">
-            <span v-if="table.primaryKeys.length === 0" class="no-pk-badge">No PK</span>
-            <span v-else class="pk-badge">PK: {{ table.primaryKeys.join(', ') }}</span>
-            <span class="row-count">{{ table.sourceCount }} rows</span>
-          </span>
+          <div class="table-checkbox">
+            <input
+              type="checkbox"
+              :checked="selectedTables.includes(table.tableName)"
+              :disabled="table.primaryKeys.length === 0"
+              @click.stop
+              @change="toggleTableSelection(table)"
+            />
+          </div>
+          <div class="table-content">
+            <span class="table-name">{{ table.tableName }}</span>
+            <span class="table-info">
+              <span v-if="table.primaryKeys.length === 0" class="no-pk-badge">No PK</span>
+              <span v-else class="pk-badge">PK: {{ table.primaryKeys.join(', ') }}</span>
+              <span class="row-count">{{ table.sourceCount }} rows</span>
+            </span>
+          </div>
         </div>
       </div>
       <div v-else-if="!loadingTables" class="empty-tables">
         Connect to databases and click Refresh to load tables
       </div>
+
+      <!-- Compare Selected Button -->
+      <div class="compare-actions" v-if="selectedTables.length > 0">
+        <button class="btn btn-compare" @click="compareSelectedTables" :disabled="comparing">
+          {{ comparing ? 'Comparing...' : `🔍 Compare ${selectedTables.length} Table(s)` }}
+        </button>
+      </div>
     </div>
 
     <!-- Comparison Results -->
-    <div class="compare-section" v-if="selectedTable">
+    <div class="compare-section" v-if="hasCompared">
       <div class="section-header">
-        <h4>{{ selectedTable }} - Data Differences</h4>
-        <button class="btn btn-compare" @click="compareData" :disabled="comparing">
-          {{ comparing ? 'Comparing...' : '🔍 Compare Data' }}
-        </button>
+        <h4>Data Differences ({{ comparedTablesCount }} table(s))</h4>
       </div>
 
       <!-- Progress Log - Terminal Style -->
@@ -50,7 +71,7 @@
           <span class="terminal-dot red"></span>
           <span class="terminal-dot yellow"></span>
           <span class="terminal-dot green"></span>
-          <span class="terminal-title">Data Compare - {{ selectedTable }}</span>
+          <span class="terminal-title">Data Compare</span>
         </div>
         <div class="terminal-body" ref="terminalBody">
           <div v-for="(log, i) in logs" :key="i" class="terminal-line">
@@ -180,11 +201,11 @@ const emit = defineEmits<{
 // State
 const tables = ref<TableDataInfo[]>([])
 const loadingTables = ref(false)
-const selectedTable = ref<string | null>(null)
+const selectedTables = ref<string[]>([])
 const comparing = ref(false)
 const hasCompared = ref(false)
 const dataDiffs = ref<DataDiffResult[]>([])
-const summary = ref<TableDataInfo | null>(null)
+const comparedTablesCount = ref(0)
 const showLimit = ref(50)
 const showConfirmDialog = ref(false)
 
@@ -245,9 +266,25 @@ const syncUpdate = ref(true)
 const syncDelete = ref(false)
 
 // Computed
+const selectableTables = computed(() => tables.value.filter(t => t.primaryKeys.length > 0))
+
+const isAllSelected = computed(() => {
+  return selectableTables.value.length > 0 &&
+         selectableTables.value.every(t => selectedTables.value.includes(t.tableName))
+})
+
 const insertDiffs = computed(() => dataDiffs.value.filter(d => d.type === 'insert'))
 const updateDiffs = computed(() => dataDiffs.value.filter(d => d.type === 'update'))
 const deleteDiffs = computed(() => dataDiffs.value.filter(d => d.type === 'delete'))
+
+const summary = computed(() => {
+  if (dataDiffs.value.length === 0) return null
+  return {
+    insertCount: insertDiffs.value.length,
+    updateCount: updateDiffs.value.length,
+    deleteCount: deleteDiffs.value.length
+  }
+})
 
 const filteredDiffs = computed(() => {
   return dataDiffs.value.filter(d => {
@@ -268,6 +305,7 @@ async function loadTables() {
   loadingTables.value = true
   try {
     tables.value = await GetTablesForSync(props.sourceConfig) || []
+    selectedTables.value = []
   } catch (e: any) {
     alert('Failed to load tables: ' + e)
   } finally {
@@ -275,62 +313,58 @@ async function loadTables() {
   }
 }
 
-function selectTable(table: TableDataInfo) {
+function toggleTableSelection(table: TableDataInfo) {
   if (table.primaryKeys.length === 0) {
-    alert('Cannot sync table without primary key')
     return
   }
-  selectedTable.value = table.tableName
-  dataDiffs.value = []
-  summary.value = null
-  hasCompared.value = false
-  showLimit.value = 50
+  const index = selectedTables.value.indexOf(table.tableName)
+  if (index === -1) {
+    selectedTables.value.push(table.tableName)
+  } else {
+    selectedTables.value.splice(index, 1)
+  }
 }
 
-async function compareData() {
-  if (!selectedTable.value) return
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedTables.value = []
+  } else {
+    selectedTables.value = selectableTables.value.map(t => t.tableName)
+  }
+}
+
+async function compareSelectedTables() {
+  if (selectedTables.value.length === 0) return
 
   comparing.value = true
   hasCompared.value = false
   dataDiffs.value = []
+  comparedTablesCount.value = 0
   clearLogs()
   startDotAnimation()
 
   try {
-    currentStep.value = 'Initializing comparison'
-    await delay(300)
-    addLog('Initializing comparison', 'done')
+    addLog(`Starting comparison for ${selectedTables.value.length} table(s)`, 'done')
 
-    currentStep.value = 'Connecting to source database'
-    await delay(200)
-    addLog('Connected to source database', 'done')
+    for (let i = 0; i < selectedTables.value.length; i++) {
+      const tableName = selectedTables.value[i]
+      currentStep.value = `Comparing table: ${tableName} (${i + 1}/${selectedTables.value.length})`
 
-    currentStep.value = 'Fetching source data'
-    await delay(200)
-    addLog('Fetched source data', 'done')
+      try {
+        const diffs = await CompareTableData(props.sourceConfig, props.targetConfig, tableName)
+        if (diffs && diffs.length > 0) {
+          dataDiffs.value.push(...diffs)
+        }
+        addLog(`Compared ${tableName}: ${diffs?.length || 0} difference(s)`, 'done')
+        comparedTablesCount.value++
+      } catch (e: any) {
+        addLog(`Error comparing ${tableName}: ${e}`, 'error')
+      }
+    }
 
-    currentStep.value = 'Connecting to target database'
-    await delay(200)
-    addLog('Connected to target database', 'done')
-
-    currentStep.value = 'Fetching target data'
-    await delay(200)
-    addLog('Fetched target data', 'done')
-
-    currentStep.value = 'Comparing records by primary key'
-    const diffsPromise = CompareTableData(props.sourceConfig, props.targetConfig, selectedTable.value)
-    const summaryPromise = GetDataSyncSummary(props.sourceConfig, props.targetConfig, selectedTable.value)
-
-    const [diffs, summaryData] = await Promise.all([diffsPromise, summaryPromise])
-
-    dataDiffs.value = diffs || []
-    summary.value = summaryData
     hasCompared.value = true
-
-    addLog('Compared records by primary key', 'done')
-
-    const diffCount = diffs?.length || 0
-    addLog(`Comparison complete: ${diffCount} difference(s) found`, 'done')
+    const totalDiffs = dataDiffs.value.length
+    addLog(`Comparison complete: ${totalDiffs} total difference(s) found`, 'done')
 
   } catch (e: any) {
     addLog(`Error: ${e}`, 'error')
@@ -359,7 +393,7 @@ async function executeSync() {
   try {
     const sql = filteredDiffs.value.map(d => d.sql).join('\n')
     await ExecuteSQL(props.targetConfig, sql)
-    await compareData()
+    await compareSelectedTables()
   } catch (e: any) {
     // Error will be shown via Wails
     console.error('Sync failed:', e)
@@ -397,6 +431,21 @@ async function executeSync() {
   color: #fff;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.select-all {
+  font-size: 13px;
+  color: #4fc3f7;
+}
+
+.select-all input {
+  accent-color: #4fc3f7;
+}
+
 .table-section {
   margin-bottom: 25px;
 }
@@ -416,6 +465,31 @@ async function executeSync() {
   cursor: pointer;
   border: 2px solid transparent;
   transition: all 0.2s;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.table-checkbox {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.table-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #4fc3f7;
+}
+
+.table-checkbox input:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.table-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .table-item:hover:not(.no-pk) {
@@ -461,6 +535,11 @@ async function executeSync() {
   color: #888;
   text-align: center;
   padding: 30px;
+}
+
+.compare-actions {
+  margin-top: 15px;
+  text-align: right;
 }
 
 .sync-summary {
