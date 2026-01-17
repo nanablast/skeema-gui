@@ -5,162 +5,170 @@
       <p class="hint">Compare and sync data from Source to Target</p>
     </div>
 
-    <!-- Table Selection -->
-    <div class="table-section">
-      <div class="section-header">
-        <h4>Select Tables</h4>
-        <div class="header-actions">
-          <label class="checkbox-label select-all" v-if="selectableTables.length > 0">
-            <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
-            <span>Select All ({{ selectableTables.length }})</span>
-          </label>
+    <div class="sync-layout">
+      <!-- Left Panel: Table Selection -->
+      <div class="left-panel">
+        <div class="panel-header">
+          <h4>Select Tables</h4>
           <button class="btn btn-refresh" @click="loadTables" :disabled="loadingTables">
             {{ loadingTables ? 'Loading...' : '🔄 Refresh' }}
           </button>
         </div>
-      </div>
 
-      <div class="table-list" v-if="tables.length > 0">
-        <div
-          v-for="table in tables"
-          :key="table.tableName"
-          class="table-item"
-          :class="{ selected: selectedTables.includes(table.tableName), 'no-pk': table.primaryKeys.length === 0 }"
-          @click="toggleTableSelection(table)"
-        >
-          <div class="table-checkbox">
-            <input
-              type="checkbox"
-              :checked="selectedTables.includes(table.tableName)"
-              :disabled="table.primaryKeys.length === 0"
-              @click.stop
-              @change="toggleTableSelection(table)"
-            />
-          </div>
-          <div class="table-content">
-            <span class="table-name">{{ table.tableName }}</span>
-            <span class="table-info">
-              <span v-if="table.primaryKeys.length === 0" class="no-pk-badge">No PK</span>
-              <span v-else class="pk-badge">PK: {{ table.primaryKeys.join(', ') }}</span>
-              <span class="row-count">{{ table.sourceCount }} rows</span>
-            </span>
-          </div>
+        <div class="select-all-row" v-if="selectableTables.length > 0">
+          <label class="checkbox-label select-all">
+            <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
+            <span>Select All ({{ selectableTables.length }})</span>
+          </label>
         </div>
-      </div>
-      <div v-else-if="!loadingTables" class="empty-tables">
-        Connect to databases and click Refresh to load tables
-      </div>
 
-      <!-- Compare Selected Button -->
-      <div class="compare-actions" v-if="selectedTables.length > 0">
-        <button class="btn btn-compare" @click="compareSelectedTables" :disabled="comparing">
-          {{ comparing ? 'Comparing...' : `🔍 Compare ${selectedTables.length} Table(s)` }}
-        </button>
-      </div>
-    </div>
-
-    <!-- Comparison Results -->
-    <div class="compare-section" v-if="hasCompared">
-      <div class="section-header">
-        <h4>Data Differences ({{ comparedTablesCount }} table(s))</h4>
-      </div>
-
-      <!-- Progress Log - Terminal Style -->
-      <div class="terminal" v-if="comparing || logs.length > 0">
-        <div class="terminal-header">
-          <span class="terminal-dot red"></span>
-          <span class="terminal-dot yellow"></span>
-          <span class="terminal-dot green"></span>
-          <span class="terminal-title">Data Compare</span>
-        </div>
-        <div class="terminal-body" ref="terminalBody">
-          <div v-for="(log, i) in logs" :key="i" class="terminal-line">
-            <span class="terminal-prompt">$</span>
-            <span class="terminal-text" :class="log.type">{{ log.message }}</span>
-            <span class="terminal-status" v-if="log.type === 'done'">✓</span>
-            <span class="terminal-status error" v-else-if="log.type === 'error'">✗</span>
-          </div>
-          <div v-if="comparing" class="terminal-line">
-            <span class="terminal-prompt">$</span>
-            <span class="terminal-text">{{ currentStep }}</span>
-            <span class="terminal-dots">
-              <span class="dot" :class="{ active: dotIndex === 0 }">.</span>
-              <span class="dot" :class="{ active: dotIndex === 1 }">.</span>
-              <span class="dot" :class="{ active: dotIndex === 2 }">.</span>
-            </span>
-          </div>
-          <div v-if="comparing" class="terminal-cursor"></div>
-        </div>
-      </div>
-
-      <!-- Summary -->
-      <div class="sync-summary" v-if="summary">
-        <div class="summary-item insert">
-          <span class="count">{{ summary.insertCount }}</span>
-          <span class="label">Insert</span>
-        </div>
-        <div class="summary-item update">
-          <span class="count">{{ summary.updateCount }}</span>
-          <span class="label">Update</span>
-        </div>
-        <div class="summary-item delete">
-          <span class="count">{{ summary.deleteCount }}</span>
-          <span class="label">Delete</span>
-        </div>
-      </div>
-
-      <!-- Sync Options -->
-      <div class="sync-options" v-if="dataDiffs.length > 0">
-        <label class="checkbox-label">
-          <input type="checkbox" v-model="syncInsert" />
-          <span>INSERT ({{ insertDiffs.length }})</span>
-        </label>
-        <label class="checkbox-label">
-          <input type="checkbox" v-model="syncUpdate" />
-          <span>UPDATE ({{ updateDiffs.length }})</span>
-        </label>
-        <label class="checkbox-label">
-          <input type="checkbox" v-model="syncDelete" />
-          <span>DELETE ({{ deleteDiffs.length }})</span>
-        </label>
-      </div>
-
-      <!-- Diff List -->
-      <div class="diff-list" v-if="filteredDiffs.length > 0">
-        <div
-          v-for="(diff, index) in filteredDiffs.slice(0, showLimit)"
-          :key="index"
-          class="diff-item"
-          :class="diff.type"
-        >
-          <div class="diff-header">
-            <span class="diff-badge" :class="diff.type">{{ diff.type.toUpperCase() }}</span>
-            <span class="pk-info">{{ formatPrimaryKey(diff.primaryKey) }}</span>
-          </div>
-          <div class="diff-sql">
-            <code>{{ diff.sql }}</code>
+        <div class="table-list" v-if="tables.length > 0">
+          <div
+            v-for="table in tables"
+            :key="table.tableName"
+            class="table-item"
+            :class="{ selected: selectedTables.includes(table.tableName), 'no-pk': table.primaryKeys.length === 0 }"
+            @click="toggleTableSelection(table)"
+          >
+            <div class="table-checkbox">
+              <input
+                type="checkbox"
+                :checked="selectedTables.includes(table.tableName)"
+                :disabled="table.primaryKeys.length === 0"
+                @click.stop
+                @change="toggleTableSelection(table)"
+              />
+            </div>
+            <div class="table-content">
+              <span class="table-name">{{ table.tableName }}</span>
+              <span class="table-info">
+                <span v-if="table.primaryKeys.length === 0" class="no-pk-badge">No PK</span>
+                <span v-else class="pk-badge">PK: {{ table.primaryKeys.join(', ') }}</span>
+                <span class="row-count">{{ table.sourceCount }} rows</span>
+              </span>
+            </div>
           </div>
         </div>
+        <div v-else-if="!loadingTables" class="empty-tables">
+          Connect to databases and click Refresh to load tables
+        </div>
 
-        <div v-if="filteredDiffs.length > showLimit" class="show-more">
-          <button class="btn btn-small" @click="showLimit += 50">
-            Show more ({{ filteredDiffs.length - showLimit }} remaining)
+        <!-- Compare Selected Button -->
+        <div class="compare-actions" v-if="selectedTables.length > 0">
+          <button class="btn btn-compare" @click="compareSelectedTables" :disabled="comparing">
+            {{ comparing ? 'Comparing...' : `🔍 Compare ${selectedTables.length} Table(s)` }}
           </button>
         </div>
       </div>
 
-      <div v-else-if="hasCompared && dataDiffs.length === 0" class="no-diff">
-        ✅ Data is identical, no sync needed
-      </div>
+      <!-- Right Panel: Comparison Results -->
+      <div class="right-panel">
+        <div class="panel-header">
+          <h4>Comparison Results</h4>
+          <span class="result-count" v-if="hasCompared">{{ comparedTablesCount }} table(s) compared</span>
+        </div>
 
-      <!-- Execute Actions -->
-      <div class="sync-actions" v-if="filteredDiffs.length > 0">
-        <button class="btn btn-copy" @click="copySQL">
-          📋 Copy SQL ({{ filteredDiffs.length }})
-        </button>
-        <button class="btn btn-execute" @click="showConfirmDialog = true">
-          ▶️ Execute Sync
-        </button>
+        <!-- Progress Log - Terminal Style (show when comparing OR when logs exist) -->
+        <div class="terminal" v-if="comparing || logs.length > 0">
+          <div class="terminal-header">
+            <span class="terminal-dot red"></span>
+            <span class="terminal-dot yellow"></span>
+            <span class="terminal-dot green"></span>
+            <span class="terminal-title">Data Compare</span>
+          </div>
+          <div class="terminal-body" ref="terminalBody">
+            <div v-for="(log, i) in logs" :key="i" class="terminal-line">
+              <span class="terminal-prompt">$</span>
+              <span class="terminal-text" :class="log.type">{{ log.message }}</span>
+              <span class="terminal-status" v-if="log.type === 'done'">✓</span>
+              <span class="terminal-status error" v-else-if="log.type === 'error'">✗</span>
+            </div>
+            <div v-if="comparing" class="terminal-line">
+              <span class="terminal-prompt">$</span>
+              <span class="terminal-text">{{ currentStep }}</span>
+              <span class="terminal-dots">
+                <span class="dot" :class="{ active: dotIndex === 0 }">.</span>
+                <span class="dot" :class="{ active: dotIndex === 1 }">.</span>
+                <span class="dot" :class="{ active: dotIndex === 2 }">.</span>
+              </span>
+            </div>
+            <div v-if="comparing" class="terminal-cursor"></div>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="sync-summary" v-if="summary">
+          <div class="summary-item insert">
+            <span class="count">{{ summary.insertCount }}</span>
+            <span class="label">Insert</span>
+          </div>
+          <div class="summary-item update">
+            <span class="count">{{ summary.updateCount }}</span>
+            <span class="label">Update</span>
+          </div>
+          <div class="summary-item delete">
+            <span class="count">{{ summary.deleteCount }}</span>
+            <span class="label">Delete</span>
+          </div>
+        </div>
+
+        <!-- Sync Options -->
+        <div class="sync-options" v-if="dataDiffs.length > 0">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="syncInsert" />
+            <span>INSERT ({{ insertDiffs.length }})</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="syncUpdate" />
+            <span>UPDATE ({{ updateDiffs.length }})</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="syncDelete" />
+            <span>DELETE ({{ deleteDiffs.length }})</span>
+          </label>
+        </div>
+
+        <!-- Diff List -->
+        <div class="diff-list" v-if="filteredDiffs.length > 0">
+          <div
+            v-for="(diff, index) in filteredDiffs.slice(0, showLimit)"
+            :key="index"
+            class="diff-item"
+            :class="diff.type"
+          >
+            <div class="diff-header">
+              <span class="diff-badge" :class="diff.type">{{ diff.type.toUpperCase() }}</span>
+              <span class="pk-info">{{ formatPrimaryKey(diff.primaryKey) }}</span>
+            </div>
+            <div class="diff-sql">
+              <code>{{ diff.sql }}</code>
+            </div>
+          </div>
+
+          <div v-if="filteredDiffs.length > showLimit" class="show-more">
+            <button class="btn btn-small" @click="showLimit += 50">
+              Show more ({{ filteredDiffs.length - showLimit }} remaining)
+            </button>
+          </div>
+        </div>
+
+        <div v-else-if="hasCompared && dataDiffs.length === 0 && !comparing" class="no-diff">
+          ✅ Data is identical, no sync needed
+        </div>
+
+        <div v-else-if="!comparing && logs.length === 0" class="empty-results">
+          Select tables and click Compare to see differences
+        </div>
+
+        <!-- Execute Actions -->
+        <div class="sync-actions" v-if="filteredDiffs.length > 0">
+          <button class="btn btn-copy" @click="copySQL">
+            📋 Copy SQL ({{ filteredDiffs.length }})
+          </button>
+          <button class="btn btn-execute" @click="showConfirmDialog = true">
+            ▶️ Execute Sync
+          </button>
+        </div>
       </div>
     </div>
 
@@ -180,7 +188,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onUnmounted } from 'vue'
-import { GetTablesForSync, CompareTableData, GetDataSyncSummary, ExecuteSQL } from '../../wailsjs/go/main/App'
+import { GetTablesForSync, CompareTableData, ExecuteSQL } from '../../wailsjs/go/main/App'
 import { database } from '../../wailsjs/go/models'
 
 type ConnectionConfig = database.ConnectionConfig
@@ -216,7 +224,6 @@ interface LogEntry {
   time?: string
 }
 const logs = ref<LogEntry[]>([])
-const progressPercent = ref(0)
 const currentStep = ref('')
 const dotIndex = ref(0)
 const terminalBody = ref<HTMLElement | null>(null)
@@ -239,25 +246,19 @@ onUnmounted(() => {
   stopDotAnimation()
 })
 
-function addLog(message: string, type: 'progress' | 'done' | 'error' = 'progress') {
+async function addLog(message: string, type: 'progress' | 'done' | 'error' = 'progress') {
   const now = new Date()
   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
   logs.value.push({ message, type, time })
-  nextTick(() => {
-    if (terminalBody.value) {
-      terminalBody.value.scrollTop = terminalBody.value.scrollHeight
-    }
-  })
+  await nextTick()
+  if (terminalBody.value) {
+    terminalBody.value.scrollTop = terminalBody.value.scrollHeight
+  }
 }
 
 function clearLogs() {
   logs.value = []
-  progressPercent.value = 0
   currentStep.value = ''
-}
-
-function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 // Sync options
@@ -343,31 +344,37 @@ async function compareSelectedTables() {
   clearLogs()
   startDotAnimation()
 
+  // Force UI update before starting
+  await nextTick()
+
   try {
-    addLog(`Starting comparison for ${selectedTables.value.length} table(s)`, 'done')
+    await addLog(`Starting comparison for ${selectedTables.value.length} table(s)`, 'done')
 
     for (let i = 0; i < selectedTables.value.length; i++) {
       const tableName = selectedTables.value[i]
       currentStep.value = `Comparing table: ${tableName} (${i + 1}/${selectedTables.value.length})`
+
+      // Force UI update to show current step
+      await nextTick()
 
       try {
         const diffs = await CompareTableData(props.sourceConfig, props.targetConfig, tableName)
         if (diffs && diffs.length > 0) {
           dataDiffs.value.push(...diffs)
         }
-        addLog(`Compared ${tableName}: ${diffs?.length || 0} difference(s)`, 'done')
+        await addLog(`Compared ${tableName}: ${diffs?.length || 0} difference(s)`, 'done')
         comparedTablesCount.value++
       } catch (e: any) {
-        addLog(`Error comparing ${tableName}: ${e}`, 'error')
+        await addLog(`Error comparing ${tableName}: ${e}`, 'error')
       }
     }
 
     hasCompared.value = true
     const totalDiffs = dataDiffs.value.length
-    addLog(`Comparison complete: ${totalDiffs} total difference(s) found`, 'done')
+    await addLog(`Comparison complete: ${totalDiffs} total difference(s) found`, 'done')
 
   } catch (e: any) {
-    addLog(`Error: ${e}`, 'error')
+    await addLog(`Error: ${e}`, 'error')
   } finally {
     stopDotAnimation()
     comparing.value = false
@@ -395,7 +402,6 @@ async function executeSync() {
     await ExecuteSQL(props.targetConfig, sql)
     await compareSelectedTables()
   } catch (e: any) {
-    // Error will be shown via Wails
     console.error('Sync failed:', e)
   }
 }
@@ -406,7 +412,9 @@ async function executeSync() {
   background: #16213e;
   border-radius: 10px;
   padding: 20px;
-  margin-top: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .sync-header h3 {
@@ -417,24 +425,60 @@ async function executeSync() {
 .hint {
   color: #888;
   font-size: 13px;
-  margin-bottom: 20px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 15px;
 }
 
-.section-header h4 {
-  color: #fff;
+.sync-layout {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
 }
 
-.header-actions {
+.left-panel {
+  width: 320px;
+  flex-shrink: 0;
   display: flex;
+  flex-direction: column;
+  background: #0f0f23;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #0f0f23;
+  border-radius: 8px;
+  padding: 15px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 15px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.panel-header h4 {
+  color: #fff;
+  margin: 0;
+  font-size: 14px;
+}
+
+.result-count {
+  color: #888;
+  font-size: 12px;
+}
+
+.select-all-row {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #333;
 }
 
 .select-all {
@@ -446,28 +490,24 @@ async function executeSync() {
   accent-color: #4fc3f7;
 }
 
-.table-section {
-  margin-bottom: 25px;
-}
-
 .table-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 10px;
-  max-height: 200px;
+  flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .table-item {
-  background: #0f0f23;
-  padding: 12px;
+  background: #16213e;
+  padding: 10px;
   border-radius: 6px;
   cursor: pointer;
   border: 2px solid transparent;
   transition: all 0.2s;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
 }
 
 .table-checkbox {
@@ -510,13 +550,15 @@ async function executeSync() {
   font-weight: bold;
   color: #fff;
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
+  font-size: 13px;
 }
 
 .table-info {
   display: flex;
-  gap: 10px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 11px;
+  flex-wrap: wrap;
 }
 
 .pk-badge {
@@ -534,26 +576,35 @@ async function executeSync() {
 .empty-tables {
   color: #888;
   text-align: center;
-  padding: 30px;
+  padding: 20px;
+  font-size: 13px;
 }
 
 .compare-actions {
-  margin-top: 15px;
-  text-align: right;
+  margin-top: 12px;
+  flex-shrink: 0;
+}
+
+.empty-results {
+  color: #666;
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 13px;
 }
 
 .sync-summary {
   display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
+  gap: 15px;
+  margin-bottom: 15px;
+  flex-shrink: 0;
 }
 
 .summary-item {
-  background: #0f0f23;
-  padding: 15px 25px;
-  border-radius: 8px;
+  background: #16213e;
+  padding: 12px 20px;
+  border-radius: 6px;
   text-align: center;
-  border-left: 4px solid;
+  border-left: 3px solid;
 }
 
 .summary-item.insert {
@@ -570,47 +621,49 @@ async function executeSync() {
 
 .summary-item .count {
   display: block;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: bold;
   color: #fff;
 }
 
 .summary-item .label {
   color: #888;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .sync-options {
   display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
+  gap: 15px;
+  margin-bottom: 15px;
+  flex-shrink: 0;
 }
 
 .checkbox-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
   color: #ccc;
+  font-size: 13px;
 }
 
 .checkbox-label input {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   cursor: pointer;
 }
 
 .diff-list {
-  max-height: 400px;
+  flex: 1;
   overflow-y: auto;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .diff-item {
-  background: #0f0f23;
+  background: #16213e;
   border-radius: 6px;
   margin-bottom: 8px;
-  border-left: 4px solid;
+  border-left: 3px solid;
   overflow: hidden;
 }
 
@@ -627,7 +680,7 @@ async function executeSync() {
 }
 
 .diff-header {
-  padding: 10px 15px;
+  padding: 8px 12px;
   background: rgba(255, 255, 255, 0.03);
   display: flex;
   align-items: center;
@@ -635,9 +688,9 @@ async function executeSync() {
 }
 
 .diff-badge {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
   font-weight: bold;
 }
 
@@ -658,16 +711,16 @@ async function executeSync() {
 
 .pk-info {
   color: #888;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .diff-sql {
-  padding: 10px 15px;
+  padding: 8px 12px;
 }
 
 .diff-sql code {
   font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 12px;
+  font-size: 11px;
   color: #81c784;
   word-break: break-all;
 }
@@ -687,6 +740,7 @@ async function executeSync() {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .btn {
@@ -699,14 +753,17 @@ async function executeSync() {
 }
 
 .btn-refresh {
-  background: #0f3460;
-  color: #4fc3f7;
+  background: #4fc3f7;
+  color: #1a1a2e;
+  font-size: 12px;
+  padding: 6px 12px;
 }
 
 .btn-compare {
   background: #4fc3f7;
   color: #1a1a2e;
   font-weight: bold;
+  width: 100%;
 }
 
 .btn-copy {
@@ -807,24 +864,25 @@ async function executeSync() {
 /* Terminal Style */
 .terminal {
   background: #0d0d0d;
-  border-radius: 8px;
-  margin-bottom: 20px;
+  border-radius: 6px;
+  margin-bottom: 15px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+  flex-shrink: 0;
 }
 
 .terminal-header {
   background: #2d2d2d;
-  padding: 8px 12px;
+  padding: 6px 10px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .terminal-dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
@@ -833,24 +891,24 @@ async function executeSync() {
 .terminal-dot.green { background: #27ca40; }
 
 .terminal-title {
-  margin-left: 10px;
+  margin-left: 8px;
   color: #888;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .terminal-body {
-  padding: 15px;
-  max-height: 200px;
+  padding: 12px;
+  max-height: 150px;
   overflow-y: auto;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .terminal-line {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 6px;
+  margin-bottom: 3px;
 }
 
 .terminal-prompt {
@@ -881,7 +939,7 @@ async function executeSync() {
 
 .terminal-dots {
   display: inline-flex;
-  gap: 2px;
+  gap: 1px;
   margin-left: 4px;
 }
 
@@ -897,7 +955,7 @@ async function executeSync() {
 .terminal-cursor {
   display: inline-block;
   width: 8px;
-  height: 16px;
+  height: 14px;
   background: #4fc3f7;
   margin-left: 4px;
   animation: blink 1s infinite;
