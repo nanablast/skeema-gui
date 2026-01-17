@@ -47,7 +47,7 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
 
       - name: Build
-        run: wails build -platform ${{ matrix.platform }} -o ${{ matrix.output }}
+        run: wails build -platform ${{ matrix.platform }} -o ${{ matrix.output }} ${{ runner.os == 'Linux' && '-tags webkit2_41' || '' }}
 
       - name: Upload macOS artifact
         if: runner.os == 'macOS'
