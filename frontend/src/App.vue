@@ -6,8 +6,24 @@
     </header>
 
     <main class="main">
-      <!-- Connection Panel -->
-      <div class="connections">
+      <!-- Connection Panel - Collapsed -->
+      <div class="connection-bar" v-if="bothConnected && isCollapsed" @click="isCollapsed = false">
+        <div class="connection-summary">
+          <span class="conn-badge source">
+            <span class="conn-icon">✓</span>
+            {{ sourceConfig.host }}:{{ sourceConfig.port }}/{{ sourceConfig.database }}
+          </span>
+          <span class="conn-arrow">➜</span>
+          <span class="conn-badge target">
+            <span class="conn-icon">✓</span>
+            {{ targetConfig.host }}:{{ targetConfig.port }}/{{ targetConfig.database }}
+          </span>
+        </div>
+        <button class="btn-expand" title="Expand">▼</button>
+      </div>
+
+      <!-- Connection Panel - Expanded -->
+      <div class="connections" v-show="!isCollapsed">
         <ConnectionForm
           title="Source Database"
           :config="sourceConfig"
@@ -31,6 +47,13 @@
           @test="testTargetConnection"
           @load-databases="loadTargetDatabases"
         />
+
+        <button
+          v-if="bothConnected"
+          class="btn-collapse"
+          @click="isCollapsed = true"
+          title="Collapse"
+        >▲</button>
       </div>
 
       <!-- Tab Navigation -->
@@ -151,6 +174,9 @@ type DiffResult = database.DiffResult
 // Active tab
 const activeTab = ref<'schema' | 'data' | 'browser'>('schema')
 
+// Connection panel collapse state
+const isCollapsed = ref(false)
+
 // Browser target switch
 const browserTarget = ref<'source' | 'target'>('target')
 
@@ -231,6 +257,13 @@ function clearSchemaLogs() {
 }
 
 const canCompare = computed(() => {
+  return sourceConnected.value &&
+         targetConnected.value &&
+         sourceConfig.value.database &&
+         targetConfig.value.database
+})
+
+const bothConnected = computed(() => {
   return sourceConnected.value &&
          targetConnected.value &&
          sourceConfig.value.database &&
@@ -385,6 +418,90 @@ body {
   align-items: flex-start;
   justify-content: center;
   margin-bottom: 20px;
+  position: relative;
+}
+
+.btn-collapse {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: #0f3460;
+  color: #4fc3f7;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-collapse:hover {
+  background: #1a4a7a;
+}
+
+/* Connection Bar (Collapsed) */
+.connection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  background: #16213e;
+  border-radius: 10px;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.connection-bar:hover {
+  background: #1a2a4e;
+}
+
+.connection-summary {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.conn-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.conn-badge.source {
+  background: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+}
+
+.conn-badge.target {
+  background: rgba(79, 195, 247, 0.15);
+  color: #4fc3f7;
+}
+
+.conn-icon {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.conn-arrow {
+  color: #4fc3f7;
+  font-size: 18px;
+}
+
+.btn-expand {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: #0f3460;
+  color: #4fc3f7;
+  font-size: 10px;
+  cursor: pointer;
 }
 
 .arrow {
