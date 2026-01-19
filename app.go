@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 
-	"skeema-gui/database"
-	"skeema-gui/updater"
+	"syncforge/database"
+	"syncforge/updater"
 )
 
 // App struct

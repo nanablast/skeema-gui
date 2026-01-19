@@ -1,13 +1,13 @@
 <template>
   <div class="diff-results">
     <div class="results-header">
-      <h3>📋 Differences Found ({{ results.length }})</h3>
+      <h3>Differences Found ({{ results.length }})</h3>
       <div class="header-actions">
         <button class="btn btn-copy" @click="copyAllSQL">
-          📋 Copy All SQL
+          Copy All SQL
         </button>
         <button class="btn btn-execute-all" @click="showConfirmDialog = true" v-if="results.length > 0">
-          ▶️ Execute All
+          Execute All
         </button>
       </div>
     </div>
@@ -38,14 +38,14 @@
 
     <!-- Full SQL Preview -->
     <div class="full-sql">
-      <h4>📄 Complete Migration Script</h4>
+      <h4>Complete Migration Script</h4>
       <pre><code>{{ fullSQL }}</code></pre>
     </div>
 
     <!-- Confirm Dialog -->
     <div class="dialog-overlay" v-if="showConfirmDialog" @click.self="showConfirmDialog = false">
       <div class="dialog">
-        <h4>⚠️ Confirm Execution</h4>
+        <h4>Confirm Execution</h4>
         <p>Execute all {{ results.length }} SQL statements on target database?</p>
         <div class="dialog-actions">
           <button class="btn btn-cancel" @click="showConfirmDialog = false">Cancel</button>

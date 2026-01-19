@@ -3,32 +3,58 @@
     <div class="form-header">
       <h3>{{ title }}</h3>
       <div class="status" :class="{ connected }">
-        {{ connected ? '✓ Connected' : '○ Not connected' }}
+        {{ connected ? t('connection.connected') : t('connection.notConnected') }}
       </div>
     </div>
 
     <!-- Saved Connections -->
     <div class="form-group saved-connections">
-      <label>Saved Connections</label>
+      <label>{{ t('connection.savedConnections') }}</label>
       <div class="saved-row">
         <select v-model="selectedSaved" @change="loadSavedConnection">
-          <option value="">-- Select saved --</option>
+          <option value="">{{ t('connection.selectSaved') }}</option>
           <option v-for="conn in savedConnections" :key="conn.name" :value="conn.name">
             {{ conn.name }}
           </option>
         </select>
-        <button class="btn-icon" @click="showSaveDialog = true" title="Save current connection">💾</button>
+        <button class="btn-icon btn-save" @click="showSaveDialog = true" :title="t('connection.save')">💾</button>
         <button
           class="btn-icon btn-delete"
           @click="deleteSelectedConnection"
           :disabled="!selectedSaved"
-          title="Delete selected connection"
+          :title="t('connection.delete')"
         >🗑️</button>
       </div>
     </div>
 
+    <!-- Database Type -->
     <div class="form-group">
-      <label>Host</label>
+      <label>{{ t('connection.dbType') }}</label>
+      <select
+        :value="config.type || 'mysql'"
+        @change="updateDbType(($event.target as HTMLSelectElement).value)"
+      >
+        <option value="mysql">MySQL</option>
+        <option value="postgresql">PostgreSQL</option>
+        <option value="sqlite">SQLite</option>
+        <option value="sqlserver">SQL Server</option>
+      </select>
+    </div>
+
+    <!-- SQLite File Path -->
+    <div class="form-group" v-if="config.type === 'sqlite'">
+      <label>{{ t('connection.dbFile') }}</label>
+      <input
+        type="text"
+        :value="config.filePath"
+        @input="updateField('filePath', ($event.target as HTMLInputElement).value)"
+        placeholder="/path/to/database.db"
+      />
+    </div>
+
+    <!-- Host (not for SQLite) -->
+    <div class="form-group" v-if="config.type !== 'sqlite'">
+      <label>{{ t('connection.host') }}</label>
       <input
         type="text"
         :value="config.host"
@@ -37,18 +63,18 @@
       />
     </div>
 
-    <div class="form-group">
-      <label>Port</label>
+    <div class="form-group" v-if="config.type !== 'sqlite'">
+      <label>{{ t('connection.port') }}</label>
       <input
         type="number"
         :value="config.port"
-        @input="updateField('port', parseInt(($event.target as HTMLInputElement).value) || 3306)"
-        placeholder="3306"
+        @input="updateField('port', parseInt(($event.target as HTMLInputElement).value) || getDefaultPort())"
+        :placeholder="String(getDefaultPort())"
       />
     </div>
 
-    <div class="form-group">
-      <label>User</label>
+    <div class="form-group" v-if="config.type !== 'sqlite'">
+      <label>{{ t('connection.user') }}</label>
       <input
         type="text"
         :value="config.user"
@@ -57,8 +83,8 @@
       />
     </div>
 
-    <div class="form-group">
-      <label>Password</label>
+    <div class="form-group" v-if="config.type !== 'sqlite'">
+      <label>{{ t('connection.password') }}</label>
       <input
         type="password"
         :value="config.password"
@@ -67,22 +93,22 @@
       />
     </div>
 
-    <div class="form-group">
-      <label>Database</label>
+    <div class="form-group" v-if="config.type !== 'sqlite'">
+      <label>{{ t('connection.database') }}</label>
       <div class="database-row">
         <select
           :value="config.database"
           @change="updateField('database', ($event.target as HTMLSelectElement).value)"
           :disabled="databases.length === 0"
         >
-          <option value="">-- Select database --</option>
+          <option value="">{{ t('connection.selectDatabase') }}</option>
           <option v-for="db in databases" :key="db" :value="db">{{ db }}</option>
         </select>
         <button
           class="btn-add-db"
           @click="showCreateDialog = true"
           :disabled="!connected"
-          title="Create new database"
+          :title="t('connection.createDatabase')"
         >+</button>
       </div>
     </div>
@@ -92,20 +118,20 @@
       @click="$emit('test')"
       :disabled="loading"
     >
-      {{ loading ? 'Connecting...' : 'Connect' }}
+      {{ loading ? t('connection.connecting') : t('connection.connect') }}
     </button>
 
     <!-- Create Database Dialog -->
     <div class="dialog-overlay" v-if="showCreateDialog" @click.self="showCreateDialog = false">
       <div class="dialog">
-        <h4>Create Database</h4>
+        <h4>{{ t('connection.createDatabase') }}</h4>
         <div class="dialog-form">
           <div class="form-group">
-            <label>Database Name</label>
+            <label>{{ t('connection.databaseName') }}</label>
             <input type="text" v-model="newDbName" placeholder="new_database" />
           </div>
           <div class="form-group">
-            <label>Charset</label>
+            <label>{{ t('connection.charset') }}</label>
             <select v-model="newDbCharset">
               <option value="utf8mb4">utf8mb4</option>
               <option value="utf8">utf8</option>
@@ -114,7 +140,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Collation</label>
+            <label>{{ t('connection.collation') }}</label>
             <select v-model="newDbCollation">
               <option value="utf8mb4_unicode_ci">utf8mb4_unicode_ci</option>
               <option value="utf8mb4_general_ci">utf8mb4_general_ci</option>
@@ -124,9 +150,9 @@
           </div>
         </div>
         <div class="dialog-actions">
-          <button class="btn btn-cancel" @click="showCreateDialog = false">Cancel</button>
+          <button class="btn btn-cancel" @click="showCreateDialog = false">{{ t('connection.cancel') }}</button>
           <button class="btn btn-create" @click="createDatabase" :disabled="!newDbName || creating">
-            {{ creating ? 'Creating...' : 'Create' }}
+            {{ creating ? t('connection.creating') : t('connection.create') }}
           </button>
         </div>
       </div>
@@ -135,17 +161,17 @@
     <!-- Save Connection Dialog -->
     <div class="dialog-overlay" v-if="showSaveDialog" @click.self="showSaveDialog = false">
       <div class="dialog">
-        <h4>Save Connection</h4>
+        <h4>{{ t('connection.saveConnection') }}</h4>
         <div class="dialog-form">
           <div class="form-group">
-            <label>Connection Name</label>
+            <label>{{ t('connection.connectionName') }}</label>
             <input type="text" v-model="saveConnName" placeholder="My Database" />
           </div>
         </div>
         <div class="dialog-actions">
-          <button class="btn btn-cancel" @click="showSaveDialog = false">Cancel</button>
+          <button class="btn btn-cancel" @click="showSaveDialog = false">{{ t('connection.cancel') }}</button>
           <button class="btn btn-create" @click="saveConnection" :disabled="!saveConnName">
-            Save
+            {{ t('connection.save') }}
           </button>
         </div>
       </div>
@@ -155,14 +181,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { CreateDatabase, GetSavedConnections, SaveConnection, DeleteConnection } from '../../wailsjs/go/main/App'
 
+const { t } = useI18n()
+
 interface ConnectionConfig {
+  type: string
   host: string
   port: number
   user: string
   password: string
   database: string
+  filePath?: string
 }
 
 interface SavedConnection {
@@ -249,6 +280,35 @@ async function deleteSelectedConnection() {
 
 function updateField(field: keyof ConnectionConfig, value: string | number) {
   emit('update:config', { ...props.config, [field]: value })
+}
+
+function getDefaultPort(): number {
+  switch (props.config.type) {
+    case 'postgresql': return 5432
+    case 'sqlserver': return 1433
+    case 'mysql':
+    default: return 3306
+  }
+}
+
+function updateDbType(type: string) {
+  const newConfig = { ...props.config, type }
+  // Update default port when type changes
+  switch (type) {
+    case 'postgresql':
+      newConfig.port = 5432
+      break
+    case 'sqlserver':
+      newConfig.port = 1433
+      break
+    case 'mysql':
+      newConfig.port = 3306
+      break
+    case 'sqlite':
+      // SQLite doesn't need port
+      break
+  }
+  emit('update:config', newConfig)
 }
 
 async function createDatabase() {

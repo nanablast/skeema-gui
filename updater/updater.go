@@ -16,7 +16,7 @@ import (
 
 const (
 	Version    = "1.1.0"
-	GithubRepo = "nanablast/skeema-gui"
+	GithubRepo = "nanablast/syncforge"
 )
 
 // Release represents a GitHub release
@@ -167,7 +167,7 @@ func DownloadUpdate(downloadURL string, progressChan chan<- int) (string, error)
 
 	// Create temp file
 	tmpDir := os.TempDir()
-	tmpFile, err := os.CreateTemp(tmpDir, "skeema-gui-update-*"+ext)
+	tmpFile, err := os.CreateTemp(tmpDir, "syncforge-update-*"+ext)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %v", err)
 	}
@@ -237,7 +237,7 @@ func applyUpdateMacOS(zipFile string) error {
 	appName := filepath.Base(appPath)
 
 	// Create temp directory for extraction
-	tmpExtractDir, err := os.MkdirTemp("", "skeema-update-extract-")
+	tmpExtractDir, err := os.MkdirTemp("", "syncforge-update-extract-")
 	if err != nil {
 		return fmt.Errorf("failed to create temp extract dir: %v", err)
 	}
@@ -273,7 +273,7 @@ rm -rf "%s"
 rm "$0"
 `, appPath, newAppPath, filepath.Join(appDir, appName), filepath.Join(appDir, appName), tmpExtractDir)
 
-	scriptPath := filepath.Join(os.TempDir(), "skeema-update.sh")
+	scriptPath := filepath.Join(os.TempDir(), "syncforge-update.sh")
 	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
 		return fmt.Errorf("failed to write update script: %v", err)
 	}
@@ -305,7 +305,7 @@ start "" "%s"
 del "%%~f0"
 `, execPath, newExe, execPath, execPath)
 
-	scriptPath := filepath.Join(os.TempDir(), "skeema-update.bat")
+	scriptPath := filepath.Join(os.TempDir(), "syncforge-update.bat")
 	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
 		return fmt.Errorf("failed to write update script: %v", err)
 	}
@@ -341,7 +341,7 @@ chmod +x "%s"
 rm "$0"
 `, newBinary, execPath, execPath, execPath)
 
-	scriptPath := filepath.Join(os.TempDir(), "skeema-update.sh")
+	scriptPath := filepath.Join(os.TempDir(), "syncforge-update.sh")
 	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
 		return fmt.Errorf("failed to write update script: %v", err)
 	}

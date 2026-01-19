@@ -2,8 +2,8 @@
   <div class="table-browser">
     <div class="browser-header">
       <div class="header-left">
-        <h3>🗂️ Table Browser</h3>
-        <p class="hint">Browse table structures and data</p>
+        <h3>{{ t('browser.title') }}</h3>
+        <p class="hint">{{ t('browser.hint') }}</p>
       </div>
       <div class="target-switch">
         <button
@@ -11,14 +11,14 @@
           :class="{ active: browserTarget === 'source' }"
           @click="$emit('switch-target', 'source')"
         >
-          Source
+          {{ t('browser.source') }}
         </button>
         <button
           class="switch-btn"
           :class="{ active: browserTarget === 'target' }"
           @click="$emit('switch-target', 'target')"
         >
-          Target
+          {{ t('browser.target') }}
         </button>
       </div>
     </div>
@@ -27,9 +27,9 @@
       <!-- Table List Sidebar -->
       <div class="table-sidebar">
         <div class="sidebar-header">
-          <span>Tables</span>
+          <span>{{ t('browser.tables') }}</span>
           <button class="btn-refresh" @click="loadTables" :disabled="loadingTables">
-            {{ loadingTables ? '...' : '🔄' }}
+            {{ loadingTables ? '...' : t('browser.refresh') }}
           </button>
         </div>
         <div class="table-list">
@@ -40,12 +40,12 @@
             :class="{ selected: selectedTable === table.tableName }"
             @click="selectTable(table.tableName)"
           >
-            <span class="table-icon">📋</span>
+            <span class="table-icon">T</span>
             <span class="table-name">{{ table.tableName }}</span>
             <span class="row-count">{{ table.sourceCount }}</span>
           </div>
           <div v-if="tables.length === 0 && !loadingTables" class="no-tables">
-            No tables found
+            {{ t('browser.noTables') }}
           </div>
         </div>
       </div>
@@ -59,30 +59,30 @@
             :class="{ active: viewMode === 'structure' }"
             @click="viewMode = 'structure'"
           >
-            Structure
+            {{ t('browser.structure') }}
           </button>
           <button
             class="content-tab"
             :class="{ active: viewMode === 'data' }"
             @click="viewMode = 'data'; loadData()"
           >
-            Data
+            {{ t('browser.data') }}
           </button>
         </div>
 
         <!-- Structure View -->
         <div class="structure-view" v-if="viewMode === 'structure'">
           <div class="section" v-if="tableStructure">
-            <h4>Columns</h4>
+            <h4>{{ t('browser.columns') }}</h4>
             <table class="structure-table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Nullable</th>
-                  <th>Key</th>
-                  <th>Default</th>
-                  <th>Extra</th>
+                  <th>{{ t('browser.name') }}</th>
+                  <th>{{ t('browser.type') }}</th>
+                  <th>{{ t('browser.nullable') }}</th>
+                  <th>{{ t('browser.key') }}</th>
+                  <th>{{ t('browser.default') }}</th>
+                  <th>{{ t('browser.extra') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,38 +99,38 @@
           </div>
 
           <div class="section" v-if="tableStructure && tableStructure.indexes.length > 0">
-            <h4>Indexes</h4>
+            <h4>{{ t('browser.indexes') }}</h4>
             <table class="structure-table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Column</th>
-                  <th>Unique</th>
+                  <th>{{ t('browser.name') }}</th>
+                  <th>{{ t('browser.column') }}</th>
+                  <th>{{ t('browser.unique') }}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(idx, i) in tableStructure.indexes" :key="i">
                   <td>{{ idx.name }}</td>
                   <td>{{ idx.column }}</td>
-                  <td>{{ idx.nonUnique === 0 ? 'Yes' : 'No' }}</td>
+                  <td>{{ idx.nonUnique === 0 ? t('browser.yes') : t('browser.no') }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <div class="section" v-if="tableStructure">
-            <h4>CREATE TABLE SQL</h4>
+            <h4>{{ t('browser.createTableSQL') }}</h4>
             <pre class="sql-preview"><code>{{ tableStructure.createSql }}</code></pre>
           </div>
         </div>
 
         <!-- Data View -->
         <div class="data-view" v-if="viewMode === 'data'">
-          <div v-if="loadingData" class="loading">Loading data...</div>
+          <div v-if="loadingData" class="loading">{{ t('browser.loadingData') }}</div>
           <div v-else-if="tableData">
             <div class="data-info">
-              Showing {{ tableData.rows.length }} of {{ tableData.totalCount }} rows
-              (Page {{ tableData.page }})
+              {{ t('browser.showing') }} {{ tableData.rows.length }} {{ t('browser.of') }} {{ tableData.totalCount }}
+              ({{ t('browser.page') }} {{ tableData.page }})
             </div>
             <div class="data-table-wrapper">
               <table class="data-table">
@@ -153,13 +153,13 @@
                 class="btn btn-page"
                 @click="changePage(-1)"
                 :disabled="currentPage <= 1"
-              >← Prev</button>
-              <span class="page-info">Page {{ currentPage }} of {{ totalPages }}</span>
+              >{{ t('browser.prev') }}</button>
+              <span class="page-info">{{ t('browser.page') }} {{ currentPage }} {{ t('browser.of') }} {{ totalPages }}</span>
               <button
                 class="btn btn-page"
                 @click="changePage(1)"
                 :disabled="currentPage >= totalPages"
-              >Next →</button>
+              >{{ t('browser.next') }}</button>
             </div>
           </div>
         </div>
@@ -168,7 +168,7 @@
       <!-- Empty State -->
       <div class="main-content empty" v-else>
         <div class="empty-message">
-          Select a table from the left to view its structure and data
+          {{ t('browser.selectTableHint') }}
         </div>
       </div>
     </div>
@@ -177,6 +177,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { GetAllTables, GetTableStructure, GetTableData } from '../../wailsjs/go/main/App'
 import { database } from '../../wailsjs/go/models'
 
@@ -184,6 +185,8 @@ type ConnectionConfig = database.ConnectionConfig
 type TableDataInfo = database.TableDataInfo
 type TableInfo = database.TableInfo
 type TableDataResult = database.TableDataResult
+
+const { t } = useI18n()
 
 const props = defineProps<{
   config: ConnectionConfig

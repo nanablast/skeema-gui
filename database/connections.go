@@ -25,7 +25,7 @@ func NewConnectionStore() (*ConnectionStore, error) {
 		return nil, err
 	}
 
-	configDir := filepath.Join(homeDir, ".skeema-gui")
+	configDir := filepath.Join(homeDir, ".syncforge")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return nil, err
 	}

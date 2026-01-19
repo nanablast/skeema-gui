@@ -3,30 +3,43 @@
     <!-- Top Bar -->
     <header class="top-bar">
       <div class="brand">
-        <h1>🔄 Skeema GUI</h1>
+        <h1>SyncForge</h1>
         <span class="version">v{{ appVersion }}</span>
       </div>
       <div class="top-actions">
+        <!-- Language Switcher -->
+        <div class="lang-switcher">
+          <button
+            class="lang-btn"
+            :class="{ active: locale === 'en' }"
+            @click="switchLocale('en')"
+          >EN</button>
+          <button
+            class="lang-btn"
+            :class="{ active: locale === 'zh' }"
+            @click="switchLocale('zh')"
+          >中</button>
+        </div>
         <button class="btn-update" @click="checkForUpdates" :disabled="checkingUpdate" v-if="!updateInfo?.available">
-          {{ checkingUpdate ? 'Checking...' : '🔄 Check Updates' }}
+          {{ checkingUpdate ? t('app.checking') : t('app.checkUpdates') }}
         </button>
         <button class="btn-update has-update" @click="showUpdateDialog = true" v-else>
-          🎉 Update Available: v{{ updateInfo.latestVersion }}
+          {{ t('app.updateAvailable') }}: v{{ updateInfo.latestVersion }}
         </button>
         <div class="connection-status" @click="showConnectionDialog = true">
         <template v-if="bothConnected">
           <span class="status-badge connected">
             <span class="status-dot"></span>
-            {{ sourceConfig.database }} ➜ {{ targetConfig.database }}
+            {{ formatConnection(sourceConfig) }} ➜ {{ formatConnection(targetConfig) }}
           </span>
         </template>
         <template v-else>
           <span class="status-badge disconnected">
             <span class="status-dot"></span>
-            Click to connect
+            {{ t('app.clickToConnect') }}
           </span>
         </template>
-        <button class="btn-settings">⚙️</button>
+        <button class="btn-settings"></button>
         </div>
       </div>
     </header>
@@ -38,21 +51,21 @@
         :class="{ active: activeTab === 'schema' }"
         @click="activeTab = 'schema'"
       >
-        📋 Schema Compare
+        {{ t('tabs.schemaCompare') }}
       </button>
       <button
         class="tab"
         :class="{ active: activeTab === 'data' }"
         @click="activeTab = 'data'"
       >
-        📊 Data Sync
+        {{ t('tabs.dataSync') }}
       </button>
       <button
         class="tab"
         :class="{ active: activeTab === 'browser' }"
         @click="activeTab = 'browser'"
       >
-        🗂️ Table Browser
+        {{ t('tabs.tableBrowser') }}
       </button>
     </nav>
 
@@ -66,7 +79,7 @@
             @click="compareSchemas"
             :disabled="!canCompare || comparing"
           >
-            {{ comparing ? 'Comparing...' : '🔍 Compare Schemas' }}
+            {{ comparing ? t('schema.comparing') : t('schema.compare') }}
           </button>
         </div>
 
@@ -76,14 +89,14 @@
             <span class="terminal-dot red"></span>
             <span class="terminal-dot yellow"></span>
             <span class="terminal-dot green"></span>
-            <span class="terminal-title">Schema Compare</span>
+            <span class="terminal-title">{{ t('tabs.schemaCompare') }}</span>
           </div>
           <div class="terminal-body" ref="terminalBody">
             <div v-for="(log, i) in schemaLogs" :key="i" class="terminal-line">
               <span class="terminal-prompt">$</span>
               <span class="terminal-text" :class="log.type">{{ log.message }}</span>
-              <span class="terminal-status" v-if="log.type === 'done'">✓</span>
-              <span class="terminal-status error" v-else-if="log.type === 'error'">✗</span>
+              <span class="terminal-status" v-if="log.type === 'done'"></span>
+              <span class="terminal-status error" v-else-if="log.type === 'error'"></span>
             </div>
             <div v-if="comparing" class="terminal-line">
               <span class="terminal-prompt">$</span>
@@ -106,11 +119,11 @@
         />
 
         <div v-else-if="hasCompared" class="empty-state">
-          ✅ No differences found. Schemas are identical.
+          {{ t('schema.noChanges') }}
         </div>
 
         <div v-else-if="!canCompare" class="empty-state hint">
-          Connect to both databases to compare schemas
+          {{ t('schema.connectBoth') }}
         </div>
       </div>
 
@@ -139,19 +152,34 @@
     <div class="dialog-overlay" v-if="showConnectionDialog" @click.self="closeConnectionDialog">
       <div class="connection-dialog">
         <div class="dialog-header">
-          <h2>Database Connections</h2>
-          <button class="btn-close" @click="closeConnectionDialog">×</button>
+          <h2>{{ t('connection.title') }}</h2>
+          <div class="dialog-header-actions">
+            <!-- Language Switcher in Dialog -->
+            <div class="lang-switcher">
+              <button
+                class="lang-btn"
+                :class="{ active: locale === 'en' }"
+                @click="switchLocale('en')"
+              >EN</button>
+              <button
+                class="lang-btn"
+                :class="{ active: locale === 'zh' }"
+                @click="switchLocale('zh')"
+              >中</button>
+            </div>
+            <button class="btn-close" @click="closeConnectionDialog">×</button>
+          </div>
         </div>
         <div class="dialog-body">
           <!-- Connection Error Message -->
           <div class="connection-error" v-if="connectionError">
-            <span class="error-icon">⚠️</span>
+            <span class="error-icon">!</span>
             <span class="error-text">{{ connectionError }}</span>
             <button class="btn-dismiss" @click="connectionError = ''">×</button>
           </div>
           <div class="connection-forms">
             <ConnectionForm
-              title="Source Database"
+              :title="t('connection.source')"
               :config="sourceConfig"
               :databases="sourceDatabases"
               :loading="sourceLoading"
@@ -165,7 +193,7 @@
             <div class="conn-arrow">➜</div>
 
             <ConnectionForm
-              title="Target Database"
+              :title="t('connection.target')"
               :config="targetConfig"
               :databases="targetDatabases"
               :loading="targetLoading"
@@ -178,7 +206,7 @@
           </div>
         </div>
         <div class="dialog-footer" v-if="bothConnected">
-          <button class="btn btn-primary" @click="closeConnectionDialog">Done</button>
+          <button class="btn btn-primary" @click="closeConnectionDialog">{{ t('connection.done') }}</button>
         </div>
       </div>
     </div>
@@ -187,7 +215,7 @@
     <div class="dialog-overlay" v-if="showUpdateDialog" @click.self="showUpdateDialog = false">
       <div class="update-dialog">
         <div class="dialog-header">
-          <h2>🎉 Update Available</h2>
+          <h2>{{ t('update.title') }}</h2>
           <button class="btn-close" @click="showUpdateDialog = false">×</button>
         </div>
         <div class="dialog-body">
@@ -198,18 +226,18 @@
               <span class="latest">v{{ updateInfo?.latestVersion }}</span>
             </div>
             <div class="release-notes" v-if="updateInfo?.releaseNotes">
-              <h4>Release Notes</h4>
+              <h4>{{ t('update.releaseNotes') }}</h4>
               <div class="notes-content">{{ updateInfo.releaseNotes }}</div>
             </div>
           </div>
         </div>
         <div class="dialog-footer">
-          <button class="btn btn-cancel" @click="showUpdateDialog = false" :disabled="isUpdating">Later</button>
+          <button class="btn btn-cancel" @click="showUpdateDialog = false" :disabled="isUpdating">{{ t('update.later') }}</button>
           <button class="btn btn-secondary" @click="openDownloadPage" :disabled="isUpdating">
-            🌐 View Release
+            {{ t('update.viewRelease') }}
           </button>
           <button class="btn btn-primary" @click="applyUpdate" :disabled="isUpdating">
-            {{ isUpdating ? '⏳ Updating...' : '🚀 Install Update' }}
+            {{ isUpdating ? t('update.updating') : t('update.install') }}
           </button>
         </div>
       </div>
@@ -219,12 +247,20 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ConnectionForm from './components/ConnectionForm.vue'
 import DiffResults from './components/DiffResults.vue'
 import DataSync from './components/DataSync.vue'
 import TableBrowser from './components/TableBrowser.vue'
 import { TestConnection, GetDatabases, CompareSchemas, ExecuteSQL, GetAppVersion, CheckForUpdates, OpenReleaseURL, DownloadAndApplyUpdate } from '../wailsjs/go/main/App'
 import { database } from '../wailsjs/go/models'
+
+const { t, locale } = useI18n()
+
+function switchLocale(lang: string) {
+  locale.value = lang
+  localStorage.setItem('locale', lang)
+}
 
 type ConnectionConfig = database.ConnectionConfig
 type DiffResult = database.DiffResult
@@ -268,6 +304,7 @@ const browserTarget = ref<'source' | 'target'>('target')
 
 // Source connection
 const sourceConfig = ref<ConnectionConfig>({
+  type: 'mysql',
   host: 'localhost',
   port: 3306,
   user: 'root',
@@ -280,6 +317,7 @@ const sourceConnected = ref(false)
 
 // Target connection
 const targetConfig = ref<ConnectionConfig>({
+  type: 'mysql',
   host: 'localhost',
   port: 3306,
   user: 'root',
@@ -354,10 +392,18 @@ const bothConnected = computed(() => {
          targetConfig.value.database
 })
 
-function closeConnectionDialog() {
-  if (bothConnected.value) {
-    showConnectionDialog.value = false
+function formatConnection(config: ConnectionConfig): string {
+  if (config.type === 'sqlite') {
+    // 显示文件名
+    const path = config.filePath || ''
+    const fileName = path.split('/').pop() || path
+    return fileName || 'SQLite'
   }
+  return `${config.host}:${config.port}/${config.database}`
+}
+
+function closeConnectionDialog() {
+  showConnectionDialog.value = false
 }
 
 async function testSourceConnection() {
@@ -726,6 +772,12 @@ body {
   font-size: 18px;
 }
 
+.dialog-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .btn-close {
   width: 32px;
   height: 32px;
@@ -1043,5 +1095,54 @@ body {
 
 .btn-cancel:hover {
   background: #333;
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  border: 1px solid #4fc3f7;
+  border-radius: 6px;
+  background: transparent;
+  color: #4fc3f7;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(79, 195, 247, 0.1);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Language Switcher */
+.lang-switcher {
+  display: flex;
+  gap: 2px;
+  background: #0f3460;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.lang-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lang-btn:hover {
+  color: #4fc3f7;
+}
+
+.lang-btn.active {
+  background: #4fc3f7;
+  color: #1a1a2e;
+  font-weight: bold;
 }
 </style>

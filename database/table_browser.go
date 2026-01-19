@@ -102,7 +102,18 @@ func GetTableStructure(config ConnectionConfig, tableName string) (*TableInfo, e
 	}
 	defer db.Close()
 
-	return getTableInfo(db, tableName)
+	switch config.Type {
+	case MySQL, "":
+		return getMySQLTableInfo(db, tableName)
+	case PostgreSQL:
+		return getPostgreSQLTableInfo(db, tableName)
+	case SQLite:
+		return getSQLiteTableInfo(db, tableName)
+	case SQLServer:
+		return getSQLServerTableInfo(db, tableName)
+	default:
+		return nil, fmt.Errorf("unsupported database type: %s", config.Type)
+	}
 }
 
 // GetAllTables returns all tables with basic info

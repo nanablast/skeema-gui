@@ -1,24 +1,24 @@
 <template>
   <div class="data-sync">
     <div class="sync-header">
-      <h3>📊 Data Sync</h3>
-      <p class="hint">Compare and sync data from Source to Target</p>
+      <h3>{{ t('dataSync.title') }}</h3>
+      <p class="hint">{{ t('dataSync.hint') }}</p>
     </div>
 
     <div class="sync-layout">
       <!-- Left Panel: Table Selection -->
       <div class="left-panel">
         <div class="panel-header">
-          <h4>Select Tables</h4>
+          <h4>{{ t('dataSync.selectTables') }}</h4>
           <button class="btn btn-refresh" @click="loadTables" :disabled="loadingTables">
-            {{ loadingTables ? 'Loading...' : '🔄 Refresh' }}
+            {{ loadingTables ? t('dataSync.loading') : t('dataSync.refresh') }}
           </button>
         </div>
 
         <div class="select-all-row" v-if="selectableTables.length > 0">
           <label class="checkbox-label select-all">
             <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
-            <span>Select All ({{ selectableTables.length }})</span>
+            <span>{{ t('dataSync.selectAll') }} ({{ selectableTables.length }})</span>
           </label>
         </div>
 
@@ -33,35 +33,35 @@
           >
             <div class="table-checkbox" @click.stop="handleTableClick($event, table, index)">
               <span class="custom-checkbox" :class="{ checked: selectedTables.includes(table.tableName), disabled: table.primaryKeys.length === 0 }">
-                <span class="checkmark" v-if="selectedTables.includes(table.tableName)">✓</span>
+                <span class="checkmark" v-if="selectedTables.includes(table.tableName)">v</span>
               </span>
             </div>
             <div class="table-content">
               <span class="table-name">{{ table.tableName }}</span>
               <span class="table-info">
-                <span v-if="table.primaryKeys.length === 0" class="no-pk-badge">No PK</span>
-                <span v-else class="pk-badge">PK: {{ table.primaryKeys.join(', ') }}</span>
-                <span class="row-count">{{ table.sourceCount }} rows</span>
+                <span v-if="table.primaryKeys.length === 0" class="no-pk-badge">{{ t('dataSync.noPK') }}</span>
+                <span v-else class="pk-badge">{{ t('dataSync.pk') }}: {{ table.primaryKeys.join(', ') }}</span>
+                <span class="row-count">{{ table.sourceCount }} {{ t('dataSync.rows') }}</span>
               </span>
             </div>
           </div>
         </div>
         <div v-else-if="!loadingTables" class="empty-tables">
-          Connect to databases and click Refresh to load tables
+          {{ t('dataSync.connectFirst') }}
         </div>
 
         <!-- Compare Selected Button -->
         <div class="compare-actions" v-if="selectedTables.length > 0">
           <button class="btn btn-compare" @click="compareSelectedTables" :disabled="comparing">
-            {{ comparing ? 'Comparing...' : `🔍 Compare ${selectedTables.length} Table(s)` }}
+            {{ comparing ? t('dataSync.comparing') : `${t('dataSync.compare')} ${selectedTables.length} ${t('dataSync.tables')}` }}
           </button>
         </div>
 
         <!-- Selected Tables List -->
         <div class="selected-section" v-if="selectedTables.length > 0">
           <div class="selected-header">
-            <span class="selected-title">Selected ({{ selectedTables.length }})</span>
-            <button class="btn-clear" @click="clearSelection">Clear All</button>
+            <span class="selected-title">{{ t('dataSync.selected') }} ({{ selectedTables.length }})</span>
+            <button class="btn-clear" @click="clearSelection">{{ t('dataSync.clearAll') }}</button>
           </div>
           <div class="selected-list">
             <span
@@ -81,8 +81,8 @@
       <!-- Right Panel: Comparison Results -->
       <div class="right-panel">
         <div class="panel-header">
-          <h4>Comparison Results</h4>
-          <span class="result-count" v-if="hasCompared">{{ comparedTablesCount }} table(s) compared</span>
+          <h4>{{ t('dataSync.comparisonResults') }}</h4>
+          <span class="result-count" v-if="hasCompared">{{ comparedTablesCount }} {{ t('dataSync.tablesCompared') }}</span>
         </div>
 
         <!-- Progress Log - Terminal Style (show when comparing OR when logs exist) -->
@@ -91,14 +91,14 @@
             <span class="terminal-dot red"></span>
             <span class="terminal-dot yellow"></span>
             <span class="terminal-dot green"></span>
-            <span class="terminal-title">Data Compare</span>
+            <span class="terminal-title">{{ t('dataSync.compare') }}</span>
           </div>
           <div class="terminal-body" ref="terminalBody">
             <div v-for="(log, i) in logs" :key="i" class="terminal-line">
               <span class="terminal-prompt">$</span>
               <span class="terminal-text" :class="log.type">{{ log.message }}</span>
-              <span class="terminal-status" v-if="log.type === 'done'">✓</span>
-              <span class="terminal-status error" v-else-if="log.type === 'error'">✗</span>
+              <span class="terminal-status" v-if="log.type === 'done'">[OK]</span>
+              <span class="terminal-status error" v-else-if="log.type === 'error'">[ERR]</span>
             </div>
             <div v-if="comparing" class="terminal-line">
               <span class="terminal-prompt">$</span>
@@ -117,15 +117,15 @@
         <div class="sync-summary" v-if="summary">
           <div class="summary-item insert">
             <span class="count">{{ summary.insertCount }}</span>
-            <span class="label">Insert</span>
+            <span class="label">{{ t('dataSync.insert') }}</span>
           </div>
           <div class="summary-item update">
             <span class="count">{{ summary.updateCount }}</span>
-            <span class="label">Update</span>
+            <span class="label">{{ t('dataSync.update') }}</span>
           </div>
           <div class="summary-item delete">
             <span class="count">{{ summary.deleteCount }}</span>
-            <span class="label">Delete</span>
+            <span class="label">{{ t('dataSync.delete') }}</span>
           </div>
         </div>
 
@@ -164,26 +164,26 @@
 
           <div v-if="filteredDiffs.length > showLimit" class="show-more">
             <button class="btn btn-small" @click="showLimit += 50">
-              Show more ({{ filteredDiffs.length - showLimit }} remaining)
+              {{ t('dataSync.showMore') }} ({{ filteredDiffs.length - showLimit }} {{ t('dataSync.remaining') }})
             </button>
           </div>
         </div>
 
         <div v-else-if="hasCompared && dataDiffs.length === 0 && !comparing" class="no-diff">
-          ✅ Data is identical, no sync needed
+          {{ t('dataSync.dataIdentical') }}
         </div>
 
         <div v-else-if="!comparing && logs.length === 0" class="empty-results">
-          Select tables and click Compare to see differences
+          {{ t('dataSync.selectAndCompare') }}
         </div>
 
         <!-- Execute Actions -->
         <div class="sync-actions" v-if="filteredDiffs.length > 0">
           <button class="btn btn-copy" @click="copySQL">
-            📋 Copy SQL ({{ filteredDiffs.length }})
+            {{ t('dataSync.copySQL') }} ({{ filteredDiffs.length }})
           </button>
           <button class="btn btn-execute" @click="showConfirmDialog = true">
-            ▶️ Execute Sync
+            {{ t('dataSync.executeSync') }}
           </button>
         </div>
       </div>
@@ -192,11 +192,11 @@
     <!-- Confirm Dialog -->
     <div class="dialog-overlay" v-if="showConfirmDialog" @click.self="showConfirmDialog = false">
       <div class="dialog">
-        <h4>⚠️ Confirm Sync</h4>
-        <p>Execute {{ filteredDiffs.length }} SQL statements on target database?</p>
+        <h4>{{ t('dataSync.confirmSync') }}</h4>
+        <p>{{ t('dataSync.confirmSyncMsg', { count: filteredDiffs.length }) }}</p>
         <div class="dialog-actions">
-          <button class="btn btn-cancel" @click="showConfirmDialog = false">Cancel</button>
-          <button class="btn btn-confirm" @click="executeSync">Execute</button>
+          <button class="btn btn-cancel" @click="showConfirmDialog = false">{{ t('dataSync.cancel') }}</button>
+          <button class="btn btn-confirm" @click="executeSync">{{ t('dataSync.execute') }}</button>
         </div>
       </div>
     </div>
@@ -205,12 +205,15 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { GetTablesForSync, CompareTableData, ExecuteSQL } from '../../wailsjs/go/main/App'
 import { database } from '../../wailsjs/go/models'
 
 type ConnectionConfig = database.ConnectionConfig
 type TableDataInfo = database.TableDataInfo
 type DataDiffResult = database.DataDiffResult
+
+const { t } = useI18n()
 
 const props = defineProps<{
   sourceConfig: ConnectionConfig
@@ -317,7 +320,7 @@ const filteredDiffs = computed(() => {
 // Methods
 async function loadTables() {
   if (!props.sourceConnected || !props.sourceConfig.database) {
-    alert('Please connect to source database first')
+    alert(t('dataSync.connectFirst'))
     return
   }
 
@@ -327,7 +330,7 @@ async function loadTables() {
     selectedTables.value = []
     lastClickedIndex.value = null
   } catch (e: any) {
-    alert('Failed to load tables: ' + e)
+    alert(t('dataSync.failedLoadTables') + ': ' + e)
   } finally {
     loadingTables.value = false
   }
@@ -422,11 +425,11 @@ async function compareSelectedTables() {
   await nextTick()
 
   try {
-    await addLog(`Starting comparison for ${selectedTables.value.length} table(s)`, 'done')
+    await addLog(t('dataSync.startingComparison', { count: selectedTables.value.length }), 'done')
 
     for (let i = 0; i < selectedTables.value.length; i++) {
       const tableName = selectedTables.value[i]
-      currentStep.value = `Comparing table: ${tableName} (${i + 1}/${selectedTables.value.length})`
+      currentStep.value = `${t('dataSync.comparingTable')}: ${tableName} (${i + 1}/${selectedTables.value.length})`
 
       // Force UI update to show current step
       await nextTick()
@@ -436,16 +439,16 @@ async function compareSelectedTables() {
         if (diffs && diffs.length > 0) {
           dataDiffs.value.push(...diffs)
         }
-        await addLog(`Compared ${tableName}: ${diffs?.length || 0} difference(s)`, 'done')
+        await addLog(t('dataSync.comparedTable', { table: tableName, count: diffs?.length || 0 }), 'done')
         comparedTablesCount.value++
       } catch (e: any) {
-        await addLog(`Error comparing ${tableName}: ${e}`, 'error')
+        await addLog(t('dataSync.errorComparing', { table: tableName }) + ': ' + e, 'error')
       }
     }
 
     hasCompared.value = true
     const totalDiffs = dataDiffs.value.length
-    await addLog(`Comparison complete: ${totalDiffs} total difference(s) found`, 'done')
+    await addLog(t('dataSync.comparisonComplete', { count: totalDiffs }), 'done')
 
   } catch (e: any) {
     await addLog(`Error: ${e}`, 'error')
@@ -463,7 +466,7 @@ function formatPrimaryKey(pk: Record<string, any>): string {
 function copySQL() {
   const sql = filteredDiffs.value.map(d => d.sql).join('\n')
   navigator.clipboard.writeText(sql)
-  alert(`Copied ${filteredDiffs.value.length} SQL statements`)
+  alert(t('dataSync.copiedSQL', { count: filteredDiffs.value.length }))
 }
 
 async function executeSync() {
