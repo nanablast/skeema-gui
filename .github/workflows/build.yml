@@ -13,13 +13,13 @@ jobs:
         include:
           - os: macos-latest
             platform: darwin/universal
-            output: skeema-gui-macos
+            output: syncforge-macos
           - os: windows-latest
             platform: windows/amd64
-            output: skeema-gui-windows-amd64.exe
+            output: syncforge-windows-amd64.exe
           - os: ubuntu-latest
             platform: linux/amd64
-            output: skeema-gui-linux-amd64
+            output: syncforge-linux-amd64
 
     runs-on: ${{ matrix.os }}
 
@@ -53,28 +53,28 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           cd build/bin
-          zip -r skeema-gui-macos.zip *.app
+          zip -r syncforge-macos.zip *.app
 
       - name: Upload macOS artifact
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
-          name: skeema-gui-macos
-          path: build/bin/skeema-gui-macos.zip
+          name: syncforge-macos
+          path: build/bin/syncforge-macos.zip
 
       - name: Upload Windows artifact
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: skeema-gui-windows
+          name: syncforge-windows
           path: build/bin/*.exe
 
       - name: Upload Linux artifact
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: skeema-gui-linux
-          path: build/bin/skeema-gui-linux-amd64
+          name: syncforge-linux
+          path: build/bin/syncforge-linux-amd64
 
   release:
     needs: build
